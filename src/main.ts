@@ -13,6 +13,7 @@ import './engine/components';
 import {
   loadSceneByName,
   Time,
+  Input,
   GlobalEvents,
   EngineEvents,
   setHotReloadScene,
@@ -86,6 +87,9 @@ async function main(): Promise<void> {
     app.appendChild(canvas);
   }
 
+  // Initialize input system
+  Input.initialize(canvas);
+
   // Create debug overlay
   createDebugOverlay();
 
@@ -119,6 +123,7 @@ async function main(): Promise<void> {
       lastTime = now;
 
       Time.update(dt);
+      Input.update();
 
       // Update scene
       scene.fixedUpdate();

@@ -15,7 +15,9 @@ import {
   waitUntil,
 } from './Scheduler';
 import { Time } from './Time';
+import { Input } from './Input';
 import { EventEmitter } from './EventSystem';
+import type { Vector2 } from './types';
 
 export abstract class Behavior {
   /** The GameObject this behavior is attached to */
@@ -213,6 +215,63 @@ export abstract class Behavior {
 
   set timeScale(value: number) {
     Time.timeScale = value;
+  }
+
+  // ==================== Input Helpers ====================
+
+  /** Get a smoothed axis value between -1 and 1 */
+  getAxis(name: string): number {
+    return Input.getAxis(name);
+  }
+
+  /** Get raw axis value: -1, 0, or 1 (no smoothing) */
+  getAxisRaw(name: string): number {
+    return Input.getAxisRaw(name);
+  }
+
+  /** Check if a button is currently held */
+  getButton(name: string): boolean {
+    return Input.getButton(name);
+  }
+
+  /** Check if a button was pressed this frame */
+  getButtonDown(name: string): boolean {
+    return Input.getButtonDown(name);
+  }
+
+  /** Check if a button was released this frame */
+  getButtonUp(name: string): boolean {
+    return Input.getButtonUp(name);
+  }
+
+  /** Check if a key is currently held */
+  getKey(code: string): boolean {
+    return Input.getKey(code);
+  }
+
+  /** Check if a key was pressed this frame */
+  getKeyDown(code: string): boolean {
+    return Input.getKeyDown(code);
+  }
+
+  /** Check if a key was released this frame */
+  getKeyUp(code: string): boolean {
+    return Input.getKeyUp(code);
+  }
+
+  /** Current mouse position relative to canvas */
+  get mousePosition(): Vector2 {
+    return Input.mousePosition;
+  }
+
+  /** Check if a mouse button is currently held (0=left, 1=middle, 2=right) */
+  getMouseButton(button: number): boolean {
+    return Input.getMouseButton(button);
+  }
+
+  /** Check if a mouse button was pressed this frame */
+  getMouseButtonDown(button: number): boolean {
+    return Input.getMouseButtonDown(button);
   }
 
   // ==================== Internal ====================

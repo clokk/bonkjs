@@ -36,3 +36,6 @@ export type {
 } from './scene';
 
 export { DEFAULT_TRANSFORM, DEFAULT_SCENE_SETTINGS } from './scene';
+
+// Input types
+export type { AxisConfig, ButtonConfig, InputConfig } from './input';

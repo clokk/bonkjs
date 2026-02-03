@@ -10,6 +10,7 @@ export { Component, registerComponent, createComponent } from './Component';
 export { Behavior } from './Behavior';
 export { Scene } from './Scene';
 export { Time } from './Time';
+export { Input } from './Input';
 
 // World management
 export { WorldManager, World } from './WorldManager';

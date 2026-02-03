@@ -9,13 +9,15 @@ import { registerBehaviors } from '../src/engine/BehaviorRegistry';
 import PlayerController from './PlayerController';
 import Rotator from './Rotator';
 import Follower from './Follower';
+import InputDebugDisplay from './InputDebugDisplay';
 
 // Register all behaviors
 registerBehaviors({
   PlayerController,
   Rotator,
   Follower,
+  InputDebugDisplay,
 });
 
 // Export for type checking
-export { PlayerController, Rotator, Follower };
+export { PlayerController, Rotator, Follower, InputDebugDisplay };
