@@ -59,5 +59,8 @@ export {
 // Physics
 export * from './physics';
 
+// Rendering
+export * from './rendering';
+
 // Types
 export * from './types';

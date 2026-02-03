@@ -23,6 +23,10 @@ behaviors/*.ts     ───────► esbuild ───────► /be
                                                                     │
                                                                     ▼
                                               Vanilla TS Game Loop (No React)
+                                                     │
+                                          ┌──────────┴──────────┐
+                                          ▼                     ▼
+                                    PixiJS Renderer       Matter.js Physics
 ```
 
 ## Project Structure
@@ -30,17 +34,34 @@ behaviors/*.ts     ───────► esbuild ───────► /be
 ```
 bonk-engine/
 ├── src/
-│   └── engine/           # Core engine classes
-│       ├── types/        # TypeScript type definitions
-│       ├── physics/      # Physics abstraction (Matter.js)
-│       └── components/   # Built-in components
+│   ├── engine/              # Core engine (future: @bonk/engine npm package)
+│   │   ├── components/      # Built-in components (Sprite, etc.)
+│   │   ├── physics/         # Physics abstraction (Matter.js)
+│   │   ├── rendering/       # Rendering abstraction (PixiJS)
+│   │   └── types/           # TypeScript type definitions
+│   └── main.ts              # Demo game entry point
 ├── tools/
 │   └── vite-plugin-bonk-scenes/  # MDX → JSON compiler
-├── behaviors/            # Game behaviors (scripts)
-├── scenes/               # MDX scene files
-├── prefabs/              # MDX prefab files
-└── public/               # Compiled output
+├── behaviors/               # Game behaviors (scripts)
+├── scenes/                  # MDX scene files
+├── prefabs/                 # MDX prefab files
+├── docs/                    # Architecture & vision docs
+└── public/                  # Compiled output
 ```
+
+### Engine vs Demo Game
+
+The `src/engine/` directory contains the core engine that could become an npm package (`@bonk/engine`). Everything outside of it (behaviors, scenes, main.ts) is a demo game that uses the engine.
+
+## Rendering
+
+Bonk Engine uses PixiJS v8 for rendering, wrapped in an abstraction layer:
+
+- **Renderer interface** - Allows swapping backends (PixiJS, Canvas2D, etc.)
+- **RenderObject** - Wrapper for visual elements with position, rotation, scale, z-index
+- **SpriteComponent** - Syncs GameObject transforms to render objects
+
+The rendering happens at the end of the game loop, after all updates are processed.
 
 ## Scene Format (MDX)
 
@@ -116,7 +137,37 @@ start(): void {
 ## Commands
 
 ```bash
-npm run dev        # Start dev server
+npm run dev        # Start dev server with hot reload
 npm run build      # Production build
 npm run typecheck  # Type checking
 ```
+
+## Documentation
+
+- [CLAUDE.md](./CLAUDE.md) - AI collaboration context and conventions
+- [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) - Full architecture documentation
+- [docs/VISION.md](./docs/VISION.md) - Product vision and design principles
+
+## Future Architecture
+
+The engine is designed for eventual extraction:
+
+```
+@bonk/engine (npm package)    ←── src/engine/ becomes this
+├── GameObject, Transform, Component, Behavior
+├── Scene, SceneLoader
+├── rendering/, physics/
+└── Time, Input, Events
+
+bonk-cli                      ←── Scaffolding tool
+└── create-bonk-game
+
+Your Game Project             ←── What users build
+├── behaviors/
+├── scenes/
+└── assets/
+```
+
+## Contributing
+
+See [CLAUDE.md](./CLAUDE.md) for conventions and patterns used in this codebase.

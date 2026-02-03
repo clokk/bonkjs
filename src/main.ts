@@ -12,13 +12,16 @@ import './engine/components';
 // Import engine
 import {
   loadSceneByName,
-  World,
   Time,
   GlobalEvents,
   EngineEvents,
   setHotReloadScene,
   setupViteHMR,
 } from './engine';
+
+// Import renderer
+import { getRenderer } from './engine/rendering';
+import type { Renderer } from './engine/rendering';
 
 // Debug overlay element
 let debugOverlay: HTMLDivElement | null = null;
@@ -36,6 +39,7 @@ function createDebugOverlay(): void {
     padding: 10px;
     border-radius: 4px;
     z-index: 9999;
+    pointer-events: none;
   `;
   document.body.appendChild(debugOverlay);
 }
@@ -54,30 +58,32 @@ function updateDebugOverlay(): void {
 async function main(): Promise<void> {
   console.log('Bonk Engine starting...');
 
-  // Create a simple canvas for now (PixiJS would replace this)
+  // Initialize renderer
+  const renderer = getRenderer();
+  const canvas = await renderer.init({
+    width: 800,
+    height: 600,
+    backgroundColor: 0x2a1a4a,
+  });
+
+  // Mount canvas to app container
   const app = document.getElementById('app');
   if (app) {
-    app.innerHTML = `
-      <div style="
-        width: 800px;
-        height: 600px;
-        background: #2a1a4a;
-        border: 2px solid #666;
-        margin: 20px auto;
-        position: relative;
-        font-family: monospace;
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      ">
-        <div style="text-align: center;">
-          <h1 style="margin: 0 0 20px 0;">Bonk Engine</h1>
-          <p>Scene loading... Use Arrow Keys / WASD to move</p>
-          <p id="scene-status">Loading Level1...</p>
-        </div>
-      </div>
+    app.innerHTML = '';
+    app.style.cssText = `
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+      box-sizing: border-box;
     `;
+    canvas.style.cssText = `
+      border: 2px solid #666;
+      border-radius: 4px;
+    `;
+    app.appendChild(canvas);
   }
 
   // Create debug overlay
@@ -90,10 +96,6 @@ async function main(): Promise<void> {
 
   GlobalEvents.on(EngineEvents.SCENE_LOAD_END, (data: { name: string }) => {
     console.log('Scene loaded:', data);
-    const status = document.getElementById('scene-status');
-    if (status) {
-      status.textContent = `Scene "${data.name}" loaded!`;
-    }
   });
 
   // Set up hot reload
@@ -108,7 +110,7 @@ async function main(): Promise<void> {
     // Set up hot reload for this scene
     setHotReloadScene(scene);
 
-    // Custom update loop for now (WorldManager would handle this)
+    // Game loop
     let lastTime = performance.now();
 
     const gameLoop = (): void => {
@@ -124,6 +126,9 @@ async function main(): Promise<void> {
       scene.lateUpdate();
       scene.processPendingDestroy();
 
+      // Render (PixiJS handles actual drawing via its internal loop)
+      renderer.render();
+
       // Update debug overlay
       updateDebugOverlay();
 
@@ -138,11 +143,6 @@ async function main(): Promise<void> {
     console.log('Game loop started');
   } catch (error) {
     console.error('Failed to start game:', error);
-    const status = document.getElementById('scene-status');
-    if (status) {
-      status.textContent = `Error: ${error}`;
-      status.style.color = '#f66';
-    }
   }
 }
 
