@@ -72,8 +72,10 @@ export class AudioSourceComponent extends Component {
         console.error(`AudioSourceComponent: Failed to load ${this.src}`, e);
       }
     }
+  }
 
-    // Handle playOnAwake
+  start(): void {
+    // Handle playOnAwake in start() so editor preview doesn't trigger audio
     if (this.playOnAwake && this.sound) {
       if (AudioManager.isUnlocked()) {
         this.play();

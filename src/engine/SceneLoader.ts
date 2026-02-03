@@ -145,19 +145,25 @@ async function createGameObject(
   return go;
 }
 
+/** Options for scene loading */
+export interface LoadSceneOptions {
+  /** Skip calling start() on the scene (awake still runs to initialize visuals) */
+  skipStart?: boolean;
+}
+
 /** Load a scene from a URL */
-export async function loadScene(url: string): Promise<Scene> {
+export async function loadScene(url: string, options?: LoadSceneOptions): Promise<Scene> {
   GlobalEvents.emit(EngineEvents.SCENE_LOAD_START, { url });
 
   // Fetch scene JSON
   const fullUrl = url.startsWith('http') ? url : `${baseUrl}scenes/${url}`;
   const json = await fetchJson<SceneJson>(fullUrl);
 
-  return loadSceneFromJson(json);
+  return loadSceneFromJson(json, options);
 }
 
 /** Load a scene from JSON data */
-export async function loadSceneFromJson(json: SceneJson): Promise<Scene> {
+export async function loadSceneFromJson(json: SceneJson, options?: LoadSceneOptions): Promise<Scene> {
   GlobalEvents.emit(EngineEvents.SCENE_LOAD_START, { name: json.name });
 
   // Create scene
@@ -177,9 +183,11 @@ export async function loadSceneFromJson(json: SceneJson): Promise<Scene> {
     await loadBehaviorsRecursive(go, behaviorMap);
   }
 
-  // Initialize scene
+  // Initialize scene (awake always runs, start is skipped for editor preview)
   scene.awake();
-  scene.start();
+  if (!options?.skipStart) {
+    scene.start();
+  }
 
   GlobalEvents.emit(EngineEvents.SCENE_LOAD_END, {
     name: json.name,
@@ -190,8 +198,8 @@ export async function loadSceneFromJson(json: SceneJson): Promise<Scene> {
 }
 
 /** Load a scene by name (assumes it's in the scenes directory) */
-export async function loadSceneByName(name: string): Promise<Scene> {
-  return loadScene(`${name}.json`);
+export async function loadSceneByName(name: string, options?: LoadSceneOptions): Promise<Scene> {
+  return loadScene(`${name}.json`, options);
 }
 
 /** Preload prefabs into cache */

@@ -14,7 +14,13 @@ bonk-engine/
 │   │   ├── physics/      # Physics abstraction (Matter.js)
 │   │   ├── rendering/    # Rendering abstraction (PixiJS)
 │   │   └── types/        # TypeScript type definitions
+│   ├── editor/           # Tauri-based editor application
+│   │   ├── components/   # React UI components (panels, viewport, etc.)
+│   │   ├── hooks/        # React hooks (useFileTree, useSelectedGameObject)
+│   │   ├── lib/          # Utilities (filesystem, cn)
+│   │   └── store/        # Zustand state management
 │   └── main.ts           # Demo game entry point
+├── src-tauri/            # Tauri Rust backend for editor
 ├── behaviors/            # Game behaviors (scripts)
 ├── scenes/               # MDX scene files
 ├── prefabs/              # MDX prefab files
@@ -49,6 +55,13 @@ class MyBehavior extends Behavior {
   onDestroy(): void {}    // Called on destruction
 }
 ```
+
+**Important: `awake()` vs `start()` for Components**
+
+- **`awake()`** - Initialize resources, create render objects, load assets. This runs even in editor preview mode so visuals appear.
+- **`start()`** - Begin gameplay behavior (auto-play audio, start animations, enable AI). This only runs when the game is actually playing.
+
+Example: `AudioSourceComponent` loads the sound file in `awake()` but only triggers `playOnAwake` in `start()`. This allows the editor to show the scene visually without audio playing until the user presses Play.
 
 ### Component Access
 ```typescript
@@ -114,8 +127,12 @@ registerComponent('MyComponent', (gameObject, data) => {
 
 ### Loading Scenes
 ```typescript
+// Normal game loading (awake + start)
 const scene = await loadSceneByName('Level1');
-scene.awake();
+
+// Editor preview mode (awake only, visuals without gameplay)
+const scene = await loadSceneByName('Level1', { skipStart: true });
+// Later, when user presses Play:
 scene.start();
 ```
 
@@ -134,10 +151,30 @@ scene.start();
 ## Commands
 
 ```bash
-npm run dev        # Start dev server with hot reload
+npm run dev        # Start dev server with hot reload (game only)
 npm run build      # Production build
 npm run typecheck  # Type checking
+npm run tauri:dev  # Start Tauri editor with full desktop features
 ```
+
+## Editor
+
+The editor is a Tauri desktop application with React frontend. It provides:
+- **Project Files panel**: Real filesystem browsing via Tauri FS plugin
+- **Hierarchy panel**: Scene GameObject tree with type icons
+- **Inspector panel**: Component editing for selected GameObjects
+- **Viewport**: Scene preview with play/pause controls
+- **Claude Terminal**: Integrated Claude CLI for AI collaboration
+
+### Editor Architecture
+- **Frontend**: React + Tailwind CSS + Zustand for state
+- **Backend**: Tauri v2 (Rust) for filesystem access and PTY management
+- **Path alias**: `@editor/*` maps to `src/editor/*`
+
+### Tauri Commands
+Custom Rust commands exposed to the frontend:
+- `get_cwd` - Get current working directory (project root detection)
+- `spawn_pty` / `write_pty` / `resize_pty` / `kill_pty` - PTY management for Claude terminal
 
 ## Hot Reload
 

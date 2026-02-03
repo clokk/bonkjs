@@ -16,18 +16,22 @@
     "outDir": "./dist",
     "rootDir": ".",
     "baseUrl": ".",
+    "jsx": "react-jsx",
     "paths": {
       "@engine/*": ["src/engine/*"],
-      "@behaviors/*": ["behaviors/*"]
+      "@behaviors/*": ["behaviors/*"],
+      "@editor/*": ["src/editor/*"]
     }
   },
   "include": [
     "src/**/*.ts",
+    "src/**/*.tsx",
     "tools/**/*.ts",
     "behaviors/**/*.ts"
   ],
   "exclude": [
     "node_modules",
-    "dist"
+    "dist",
+    "src-tauri"
   ]
 }
