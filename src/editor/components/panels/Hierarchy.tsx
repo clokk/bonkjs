@@ -1,6 +1,22 @@
 import React, { useState, useMemo } from 'react';
-import { ChevronRight, ChevronDown, Box, Eye, EyeOff, Search, Camera, Image, Activity, Volume2 } from 'lucide-react';
-import { Panel, Input } from '@editor/components/ui';
+import {
+  ChevronRight,
+  ChevronDown,
+  Box,
+  Eye,
+  EyeOff,
+  Search,
+  Camera,
+  Image,
+  Activity,
+  Volume2,
+  Copy,
+  Trash2,
+  Plus,
+  Pencil,
+} from 'lucide-react';
+import { Panel, Input, ContextMenu, RenameDialog } from '@editor/components/ui';
+import type { ContextMenuItem } from '@editor/components/ui';
 import { useEditorStore } from '@editor/store/editorStore';
 import { cn } from '@editor/lib/utils';
 import type { GameObject } from '@engine/GameObject';
@@ -14,8 +30,10 @@ function getGameObjectIcon(gameObject: GameObject) {
   if (gameObject.getComponent(Camera2DComponent)) {
     return { Icon: Camera, color: 'text-purple-400' };
   }
-  if (gameObject.getComponent(SpriteComponent) ||
-      gameObject.getComponent(AnimatedSpriteComponent)) {
+  if (
+    gameObject.getComponent(SpriteComponent) ||
+    gameObject.getComponent(AnimatedSpriteComponent)
+  ) {
     return { Icon: Image, color: 'text-green-400' };
   }
   if (gameObject.getComponent(RigidBody2DComponent)) {
@@ -32,6 +50,8 @@ interface HierarchyNodeProps {
   depth: number;
   expandedIds: Set<string>;
   onToggleExpand: (id: string) => void;
+  onContextMenu: (e: React.MouseEvent, gameObject: GameObject) => void;
+  hierarchyVersion: number; // Forces re-render when hierarchy changes
 }
 
 const HierarchyNode: React.FC<HierarchyNodeProps> = ({
@@ -39,6 +59,8 @@ const HierarchyNode: React.FC<HierarchyNodeProps> = ({
   depth,
   expandedIds,
   onToggleExpand,
+  onContextMenu,
+  hierarchyVersion,
 }) => {
   const selectedIds = useEditorStore((state) => state.selectedGameObjectIds);
   const selectGameObject = useEditorStore((state) => state.selectGameObject);
@@ -74,6 +96,7 @@ const HierarchyNode: React.FC<HierarchyNodeProps> = ({
         )}
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
         onClick={handleClick}
+        onContextMenu={(e) => onContextMenu(e, gameObject)}
       >
         {/* Expand/Collapse */}
         <button
@@ -117,22 +140,53 @@ const HierarchyNode: React.FC<HierarchyNodeProps> = ({
             depth={depth + 1}
             expandedIds={expandedIds}
             onToggleExpand={onToggleExpand}
+            onContextMenu={onContextMenu}
+            hierarchyVersion={hierarchyVersion}
           />
         ))}
     </>
   );
 };
 
+type ContextMenuState =
+  | { type: 'gameObject'; position: { x: number; y: number }; gameObject: GameObject }
+  | { type: 'empty'; position: { x: number; y: number } }
+  | null;
+
+interface RenameDialogState {
+  isOpen: boolean;
+  id: string;
+  name: string;
+}
+
 export const Hierarchy: React.FC = () => {
   const clearSelection = useEditorStore((state) => state.clearSelection);
   const currentScene = useEditorStore((state) => state.currentScene);
+  const deleteSelectedGameObjects = useEditorStore(
+    (state) => state.deleteSelectedGameObjects
+  );
+  const duplicateSelectedGameObjects = useEditorStore(
+    (state) => state.duplicateSelectedGameObjects
+  );
+  const renameGameObject = useEditorStore((state) => state.renameGameObject);
+  const createGameObject = useEditorStore((state) => state.createGameObject);
+  // Subscribe to hierarchyVersion to trigger re-renders when hierarchy changes
+  const hierarchyVersion = useEditorStore((state) => state.hierarchyVersion);
+
   const [filterQuery, setFilterQuery] = useState('');
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
+  const [renameDialog, setRenameDialog] = useState<RenameDialogState>({
+    isOpen: false,
+    id: '',
+    name: '',
+  });
 
   // Get game objects from the current scene
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const gameObjects = useMemo(() => {
     return currentScene?.getGameObjects() ?? [];
-  }, [currentScene]);
+  }, [currentScene, hierarchyVersion]);
 
   const handleToggleExpand = (id: string) => {
     setExpandedIds((prev) => {
@@ -146,14 +200,107 @@ export const Hierarchy: React.FC = () => {
     });
   };
 
+  const selectGameObject = useEditorStore((state) => state.selectGameObject);
+
+  const handleGameObjectContextMenu = (e: React.MouseEvent, gameObject: GameObject) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Select the object when right-clicking so delete works
+    selectGameObject(gameObject.id);
+    setContextMenu({
+      type: 'gameObject',
+      position: { x: e.clientX, y: e.clientY },
+      gameObject,
+    });
+  };
+
+  const handleEmptyContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    clearSelection();
+    setContextMenu({
+      type: 'empty',
+      position: { x: e.clientX, y: e.clientY },
+    });
+  };
+
+  const closeContextMenu = () => {
+    setContextMenu(null);
+  };
+
+  const openRenameDialog = (gameObject: GameObject) => {
+    setRenameDialog({
+      isOpen: true,
+      id: gameObject.id,
+      name: gameObject.name,
+    });
+  };
+
+  const closeRenameDialog = () => {
+    setRenameDialog({ isOpen: false, id: '', name: '' });
+  };
+
+  const handleRenameConfirm = (newName: string) => {
+    if (renameDialog.id && newName) {
+      renameGameObject(renameDialog.id, newName);
+    }
+    closeRenameDialog();
+  };
+
+  const getGameObjectMenuItems = (gameObject: GameObject): ContextMenuItem[] => {
+    return [
+      {
+        label: 'Duplicate',
+        icon: <Copy size={12} />,
+        shortcut: '\u2318D',
+        onClick: () => {
+          duplicateSelectedGameObjects();
+        },
+      },
+      {
+        label: 'Rename',
+        icon: <Pencil size={12} />,
+        onClick: () => {
+          openRenameDialog(gameObject);
+        },
+      },
+      {
+        label: 'Create Empty Child',
+        icon: <Plus size={12} />,
+        onClick: () => {
+          createGameObject('New GameObject', gameObject.id);
+          setExpandedIds((prev) => new Set(prev).add(gameObject.id));
+        },
+      },
+      {
+        label: 'Delete',
+        icon: <Trash2 size={12} />,
+        shortcut: 'Del',
+        danger: true,
+        onClick: () => {
+          deleteSelectedGameObjects();
+        },
+      },
+    ];
+  };
+
+  const getEmptyMenuItems = (): ContextMenuItem[] => {
+    return [
+      {
+        label: 'Create Empty',
+        icon: <Plus size={12} />,
+        onClick: () => {
+          createGameObject('New GameObject');
+        },
+      },
+    ];
+  };
+
   // Filter game objects by name
   const filteredGameObjects = useMemo(() => {
     if (!filterQuery) return gameObjects;
 
     const query = filterQuery.toLowerCase();
-    const filterRecursive = (
-      gos: readonly GameObject[]
-    ): GameObject[] => {
+    const filterRecursive = (gos: readonly GameObject[]): GameObject[] => {
       return gos.filter((go) => {
         const matches = go.name.toLowerCase().includes(query);
         const hasMatchingChild = filterRecursive(go.getChildren()).length > 0;
@@ -171,6 +318,7 @@ export const Hierarchy: React.FC = () => {
         <div
           className="flex-1 min-h-0 overflow-y-auto py-1"
           onClick={() => clearSelection()}
+          onContextMenu={handleEmptyContextMenu}
         >
           {filteredGameObjects.length > 0 ? (
             filteredGameObjects.map((go) => (
@@ -180,6 +328,8 @@ export const Hierarchy: React.FC = () => {
                 depth={0}
                 expandedIds={expandedIds}
                 onToggleExpand={handleToggleExpand}
+                onContextMenu={handleGameObjectContextMenu}
+                hierarchyVersion={hierarchyVersion}
               />
             ))
           ) : (
@@ -207,6 +357,30 @@ export const Hierarchy: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Context Menu */}
+      {contextMenu?.type === 'gameObject' && (
+        <ContextMenu
+          items={getGameObjectMenuItems(contextMenu.gameObject)}
+          position={contextMenu.position}
+          onClose={closeContextMenu}
+        />
+      )}
+      {contextMenu?.type === 'empty' && (
+        <ContextMenu
+          items={getEmptyMenuItems()}
+          position={contextMenu.position}
+          onClose={closeContextMenu}
+        />
+      )}
+
+      {/* Rename Dialog */}
+      <RenameDialog
+        isOpen={renameDialog.isOpen}
+        initialValue={renameDialog.name}
+        onClose={closeRenameDialog}
+        onConfirm={handleRenameConfirm}
+      />
     </Panel>
   );
 };

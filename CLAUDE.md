@@ -160,8 +160,8 @@ npm run tauri:dev  # Start Tauri editor with full desktop features
 ## Editor
 
 The editor is a Tauri desktop application with React frontend. It provides:
-- **Project Files panel**: Real filesystem browsing via Tauri FS plugin
-- **Hierarchy panel**: Scene GameObject tree with type icons
+- **Project Files panel**: Real filesystem browsing via Tauri FS plugin, with search filter
+- **Hierarchy panel**: Scene GameObject tree with type icons and search filter
 - **Inspector panel**: Component editing for selected GameObjects
 - **Viewport**: Scene preview with play/pause controls
 - **Claude Terminal**: Integrated Claude CLI for AI collaboration
@@ -170,6 +170,21 @@ The editor is a Tauri desktop application with React frontend. It provides:
 - **Frontend**: React + Tailwind CSS + Zustand for state
 - **Backend**: Tauri v2 (Rust) for filesystem access and PTY management
 - **Path alias**: `@editor/*` maps to `src/editor/*`
+
+### Keyboard Shortcuts
+| Shortcut | Action |
+|----------|--------|
+| `Delete` / `Backspace` | Delete selected GameObjects |
+| `Cmd+D` | Duplicate selected GameObjects |
+| `Cmd+S` | Save current scene |
+| `Cmd+R` | Refresh the editor |
+| `Escape` | Clear selection |
+
+### Context Menus
+Right-click in panels for context-sensitive actions:
+- **Project Files**: New File, New Folder, Rename, Delete, Copy Path
+- **Hierarchy (on GameObject)**: Duplicate, Rename, Create Empty Child, Delete
+- **Hierarchy (empty space)**: Create Empty
 
 ### Tauri Commands
 Custom Rust commands exposed to the frontend:

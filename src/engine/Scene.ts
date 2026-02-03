@@ -146,7 +146,10 @@ export class Scene implements IScene {
   /** Add a GameObject to the scene */
   add(gameObject: GameObject): void {
     gameObject.scene = this;
-    this.gameObjects.push(gameObject);
+    // Only add to root array if this object has no parent
+    if (!gameObject.parent) {
+      this.gameObjects.push(gameObject);
+    }
     this.gameObjectsById.set(gameObject.id, gameObject);
 
     // Register all children too

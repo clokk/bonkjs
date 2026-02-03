@@ -186,3 +186,59 @@ export async function watchProjectTree(
     }
   };
 }
+
+/**
+ * Create a new file with optional content.
+ */
+export async function createFile(
+  relativePath: string,
+  content: string = ''
+): Promise<void> {
+  const { writeTextFile } = await import('@tauri-apps/plugin-fs');
+  const projectRoot = await getProjectRoot();
+  const fullPath = `${projectRoot}${relativePath}`;
+  await writeTextFile(fullPath, content);
+}
+
+/**
+ * Create a new directory.
+ */
+export async function createDirectory(relativePath: string): Promise<void> {
+  const { mkdir } = await import('@tauri-apps/plugin-fs');
+  const projectRoot = await getProjectRoot();
+  const fullPath = `${projectRoot}${relativePath}`;
+  await mkdir(fullPath, { recursive: true });
+}
+
+/**
+ * Delete a file or directory.
+ */
+export async function deleteFileOrDirectory(relativePath: string): Promise<void> {
+  const { remove } = await import('@tauri-apps/plugin-fs');
+  const projectRoot = await getProjectRoot();
+  const fullPath = `${projectRoot}${relativePath}`;
+  await remove(fullPath, { recursive: true });
+}
+
+/**
+ * Rename/move a file or directory.
+ */
+export async function renameFileOrDirectory(
+  oldRelativePath: string,
+  newRelativePath: string
+): Promise<void> {
+  const { rename } = await import('@tauri-apps/plugin-fs');
+  const projectRoot = await getProjectRoot();
+  const oldFullPath = `${projectRoot}${oldRelativePath}`;
+  const newFullPath = `${projectRoot}${newRelativePath}`;
+  await rename(oldFullPath, newFullPath);
+}
+
+/**
+ * Copy text to clipboard.
+ */
+export async function copyToClipboard(text: string): Promise<void> {
+  if (navigator.clipboard) {
+    await navigator.clipboard.writeText(text);
+  }
+}

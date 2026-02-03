@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Scene } from '@engine/Scene';
+import { GameObject } from '@engine/GameObject';
 
 export type BottomPanelTab = 'project' | 'console' | 'claude';
 
@@ -35,6 +36,9 @@ interface EditorState {
   // Console
   consoleLogs: ConsoleLog[];
 
+  // Force re-render counter (increment to trigger UI updates)
+  hierarchyVersion: number;
+
   // Actions
   selectGameObject: (id: string) => void;
   toggleSelection: (id: string) => void;
@@ -62,6 +66,13 @@ interface EditorState {
 
   addConsoleLog: (log: ConsoleLog) => void;
   clearConsoleLogs: () => void;
+
+  // GameObject operations
+  deleteSelectedGameObjects: () => void;
+  duplicateSelectedGameObjects: () => void;
+  renameGameObject: (id: string, newName: string) => void;
+  createGameObject: (name?: string, parentId?: string) => void;
+  refreshHierarchy: () => void;
 }
 
 interface ConsoleLog {
@@ -95,6 +106,8 @@ export const useEditorStore = create<EditorState>((set) => ({
   activeBottomPanel: 'console',
 
   consoleLogs: [],
+
+  hierarchyVersion: 0,
 
   // Actions
   selectGameObject: (id) =>
@@ -158,4 +171,105 @@ export const useEditorStore = create<EditorState>((set) => ({
     })),
 
   clearConsoleLogs: () => set({ consoleLogs: [] }),
+
+  deleteSelectedGameObjects: () =>
+    set((state) => {
+      if (!state.currentScene || state.selectedGameObjectIds.length === 0) {
+        return state;
+      }
+
+      for (const id of state.selectedGameObjectIds) {
+        const go = state.currentScene.findById(id);
+        if (go) {
+          // Remove from scene first, then destroy
+          state.currentScene.remove(go);
+          go.destroy();
+        }
+      }
+
+      return {
+        selectedGameObjectIds: [],
+        lastSelectedId: null,
+        isDirty: true,
+        hierarchyVersion: state.hierarchyVersion + 1,
+      };
+    }),
+
+  duplicateSelectedGameObjects: () =>
+    set((state) => {
+      if (!state.currentScene || state.selectedGameObjectIds.length === 0) {
+        return state;
+      }
+
+      const newIds: string[] = [];
+
+      for (const id of state.selectedGameObjectIds) {
+        const go = state.currentScene.findById(id);
+        if (go) {
+          // Create a simple clone by instantiating a new GameObject
+          const clone = new GameObject(`${go.name} (Copy)`);
+          clone.transform.position = [
+            go.transform.position[0] + 20,
+            go.transform.position[1] + 20,
+          ];
+          clone.transform.rotation = go.transform.rotation;
+          clone.transform.scale = [...go.transform.scale];
+          clone.tag = go.tag;
+          state.currentScene.add(clone);
+          newIds.push(clone.id);
+        }
+      }
+
+      return {
+        selectedGameObjectIds: newIds,
+        lastSelectedId: newIds[newIds.length - 1] ?? null,
+        isDirty: true,
+        hierarchyVersion: state.hierarchyVersion + 1,
+      };
+    }),
+
+  renameGameObject: (id, newName) =>
+    set((state) => {
+      if (!state.currentScene || !newName) return state;
+
+      const go = state.currentScene.findById(id);
+      if (!go) {
+        console.warn('[renameGameObject] GameObject not found:', id);
+        return state;
+      }
+
+      go.name = newName;
+      return {
+        isDirty: true,
+        hierarchyVersion: state.hierarchyVersion + 1,
+      };
+    }),
+
+  createGameObject: (name = 'New GameObject', parentId) =>
+    set((state) => {
+      if (!state.currentScene) return state;
+
+      const go = new GameObject(name);
+
+      if (parentId) {
+        const parent = state.currentScene.findById(parentId);
+        if (parent) {
+          go.parent = parent;
+        }
+      }
+
+      state.currentScene.add(go);
+
+      return {
+        selectedGameObjectIds: [go.id],
+        lastSelectedId: go.id,
+        isDirty: true,
+        hierarchyVersion: state.hierarchyVersion + 1,
+      };
+    }),
+
+  refreshHierarchy: () =>
+    set((state) => ({
+      hierarchyVersion: state.hierarchyVersion + 1,
+    })),
 }));
