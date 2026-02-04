@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   ChevronRight,
   ChevronDown,
@@ -25,6 +25,14 @@ import { SpriteComponent } from '@engine/components/SpriteComponent';
 import { AnimatedSpriteComponent } from '@engine/components/AnimatedSpriteComponent';
 import { RigidBody2DComponent } from '@engine/components/RigidBody2DComponent';
 import { AudioSourceComponent } from '@engine/components/AudioSourceComponent';
+import {
+  useDragTarget,
+  isImageFile,
+  fileNameWithoutExtension,
+  type DragData,
+  DRAG_MIME_TYPE,
+  decodeDragData,
+} from '@editor/hooks/useDragAndDrop';
 
 function getGameObjectIcon(gameObject: GameObject) {
   if (gameObject.getComponent(Camera2DComponent)) {
@@ -52,6 +60,7 @@ interface HierarchyNodeProps {
   onToggleExpand: (id: string) => void;
   onContextMenu: (e: React.MouseEvent, gameObject: GameObject) => void;
   hierarchyVersion: number; // Forces re-render when hierarchy changes
+  onDropOnNode: (data: DragData, parentId: string) => void;
 }
 
 const HierarchyNode: React.FC<HierarchyNodeProps> = ({
@@ -61,6 +70,7 @@ const HierarchyNode: React.FC<HierarchyNodeProps> = ({
   onToggleExpand,
   onContextMenu,
   hierarchyVersion,
+  onDropOnNode,
 }) => {
   const selectedIds = useEditorStore((state) => state.selectedGameObjectIds);
   const selectGameObject = useEditorStore((state) => state.selectGameObject);
@@ -69,6 +79,9 @@ const HierarchyNode: React.FC<HierarchyNodeProps> = ({
   const isSelected = selectedIds.includes(gameObject.id);
   const isExpanded = expandedIds.has(gameObject.id);
   const hasChildren = gameObject.getChildren().length > 0;
+
+  // Node-level drag and drop state
+  const [isNodeDragOver, setIsNodeDragOver] = useState(false);
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -84,19 +97,65 @@ const HierarchyNode: React.FC<HierarchyNodeProps> = ({
     onToggleExpand(gameObject.id);
   };
 
+  const handleNodeDragOver = (e: React.DragEvent) => {
+    const types = Array.from(e.dataTransfer.types);
+    if (types.includes(DRAG_MIME_TYPE)) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.dataTransfer.dropEffect = 'copy';
+    }
+  };
+
+  const handleNodeDragEnter = (e: React.DragEvent) => {
+    const types = Array.from(e.dataTransfer.types);
+    if (types.includes(DRAG_MIME_TYPE)) {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsNodeDragOver(true);
+    }
+  };
+
+  const handleNodeDragLeave = (e: React.DragEvent) => {
+    e.stopPropagation();
+    // Check if we're truly leaving this element (relatedTarget can be null)
+    const relatedTarget = e.relatedTarget as Node | null;
+    if (!relatedTarget || !e.currentTarget.contains(relatedTarget)) {
+      setIsNodeDragOver(false);
+    }
+  };
+
+  const handleNodeDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsNodeDragOver(false);
+
+    const encoded = e.dataTransfer.getData(DRAG_MIME_TYPE);
+    if (!encoded) return;
+
+    const data = decodeDragData(encoded);
+    if (!data || data.type !== 'file' || !isImageFile(data.path)) return;
+
+    onDropOnNode(data, gameObject.id);
+  };
+
   return (
     <>
       <div
         className={cn(
-          'flex items-center gap-1 px-2 py-0.5 rounded cursor-pointer transition-colors select-none',
+          'flex items-center gap-1 px-2 py-1 rounded cursor-pointer transition-colors select-none',
           isSelected
             ? 'bg-sky-400/20 text-sky-400'
             : 'hover:bg-zinc-800 text-zinc-300',
-          !gameObject.enabled && 'opacity-50'
+          !gameObject.enabled && 'opacity-50',
+          isNodeDragOver && 'ring-2 ring-sky-400 ring-inset bg-sky-400/20'
         )}
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
         onClick={handleClick}
         onContextMenu={(e) => onContextMenu(e, gameObject)}
+        onDragOver={handleNodeDragOver}
+        onDragEnter={handleNodeDragEnter}
+        onDragLeave={handleNodeDragLeave}
+        onDrop={handleNodeDrop}
       >
         {/* Expand/Collapse */}
         <button
@@ -142,6 +201,7 @@ const HierarchyNode: React.FC<HierarchyNodeProps> = ({
             onToggleExpand={onToggleExpand}
             onContextMenu={onContextMenu}
             hierarchyVersion={hierarchyVersion}
+            onDropOnNode={onDropOnNode}
           />
         ))}
     </>
@@ -170,6 +230,9 @@ export const Hierarchy: React.FC = () => {
   );
   const renameGameObject = useEditorStore((state) => state.renameGameObject);
   const createGameObject = useEditorStore((state) => state.createGameObject);
+  const createGameObjectWithSprite = useEditorStore(
+    (state) => state.createGameObjectWithSprite
+  );
   // Subscribe to hierarchyVersion to trigger re-renders when hierarchy changes
   const hierarchyVersion = useEditorStore((state) => state.hierarchyVersion);
 
@@ -181,6 +244,34 @@ export const Hierarchy: React.FC = () => {
     id: '',
     name: '',
   });
+
+  // Handle drop on empty space (create at root)
+  const handleDropOnRoot = useCallback(
+    (data: DragData) => {
+      if (data.type !== 'file' || !isImageFile(data.path)) return;
+      const name = fileNameWithoutExtension(data.path);
+      createGameObjectWithSprite(name, data.path);
+    },
+    [createGameObjectWithSprite]
+  );
+
+  // Handle drop on a specific node (create as child)
+  const handleDropOnNode = useCallback(
+    (data: DragData, parentId: string) => {
+      if (data.type !== 'file' || !isImageFile(data.path)) return;
+      const name = fileNameWithoutExtension(data.path);
+      createGameObjectWithSprite(name, data.path, undefined, parentId);
+      // Auto-expand the parent
+      setExpandedIds((prev) => new Set(prev).add(parentId));
+    },
+    [createGameObjectWithSprite]
+  );
+
+  const { isDragOver: isRootDragOver, dragTargetProps: rootDragTargetProps } =
+    useDragTarget(
+      handleDropOnRoot,
+      (data) => data.type === 'file' && isImageFile(data.path)
+    );
 
   // Get game objects from the current scene
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -316,9 +407,13 @@ export const Hierarchy: React.FC = () => {
       <div className="flex flex-col h-full">
         {/* Tree View */}
         <div
-          className="flex-1 min-h-0 overflow-y-auto py-1"
+          className={cn(
+            'flex-1 min-h-0 overflow-y-auto py-1 transition-colors',
+            isRootDragOver && 'bg-sky-400/10'
+          )}
           onClick={() => clearSelection()}
           onContextMenu={handleEmptyContextMenu}
+          {...rootDragTargetProps}
         >
           {filteredGameObjects.length > 0 ? (
             filteredGameObjects.map((go) => (
@@ -330,6 +425,7 @@ export const Hierarchy: React.FC = () => {
                 onToggleExpand={handleToggleExpand}
                 onContextMenu={handleGameObjectContextMenu}
                 hierarchyVersion={hierarchyVersion}
+                onDropOnNode={handleDropOnNode}
               />
             ))
           ) : (

@@ -30,6 +30,11 @@ import {
   renameFileOrDirectory,
   copyToClipboard,
 } from '@editor/lib/filesystem';
+import {
+  isImageFile,
+  DRAG_MIME_TYPE,
+  encodeDragData,
+} from '@editor/hooks/useDragAndDrop';
 
 const getFileIcon = (name: string) => {
   const ext = name.split('.').pop()?.toLowerCase();
@@ -81,6 +86,7 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
   const isExpanded = expandedPaths.has(node.path);
   const isSelected = selectedPath === node.path;
   const isFolder = node.type === 'folder';
+  const isDraggable = !isFolder && isImageFile(node.path);
 
   const handleClick = () => {
     if (isFolder) {
@@ -109,6 +115,15 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
     }
   };
 
+  const handleDragStart = (e: React.DragEvent) => {
+    if (!isDraggable) return;
+    e.dataTransfer.setData(
+      DRAG_MIME_TYPE,
+      encodeDragData({ type: 'file', path: node.path })
+    );
+    e.dataTransfer.effectAllowed = 'copy';
+  };
+
   return (
     <>
       <div
@@ -116,12 +131,15 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
           'flex items-center gap-1 px-2 py-0.5 rounded cursor-pointer transition-colors select-none',
           isSelected
             ? 'bg-sky-400/20 text-sky-400'
-            : 'hover:bg-zinc-800 text-zinc-300'
+            : 'hover:bg-zinc-800 text-zinc-300',
+          isDraggable && 'cursor-grab active:cursor-grabbing'
         )}
         style={{ paddingLeft: `${depth * 12 + 8}px` }}
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}
         onContextMenu={(e) => onContextMenu(e, node)}
+        draggable={isDraggable}
+        onDragStart={handleDragStart}
       >
         {/* Expand/Collapse or File Icon */}
         {isFolder ? (

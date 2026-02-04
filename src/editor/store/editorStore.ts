@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Scene } from '@engine/Scene';
 import { GameObject } from '@engine/GameObject';
+import { SpriteComponent } from '@engine/components/SpriteComponent';
 import { saveSceneToJson } from '@editor/lib/sceneSerializer';
 
 export type BottomPanelTab = 'project' | 'console' | 'claude';
@@ -77,6 +78,12 @@ interface EditorState {
   duplicateSelectedGameObjects: () => void;
   renameGameObject: (id: string, newName: string) => void;
   createGameObject: (name?: string, parentId?: string) => void;
+  createGameObjectWithSprite: (
+    name: string,
+    spriteSrc: string,
+    position?: [number, number],
+    parentId?: string
+  ) => void;
   refreshHierarchy: () => void;
 }
 
@@ -282,6 +289,50 @@ export const useEditorStore = create<EditorState>((set) => ({
       }
 
       state.currentScene.add(go);
+
+      return {
+        selectedGameObjectIds: [go.id],
+        lastSelectedId: go.id,
+        isDirty: true,
+        hierarchyVersion: state.hierarchyVersion + 1,
+      };
+    }),
+
+  createGameObjectWithSprite: (name, spriteSrc, position, parentId) =>
+    set((state) => {
+      if (!state.currentScene) return state;
+
+      const go = new GameObject(name);
+
+      // Set position if provided
+      if (position) {
+        go.transform.position = position;
+      }
+
+      // Set parent if provided
+      if (parentId) {
+        const parent = state.currentScene.findById(parentId);
+        if (parent) {
+          go.parent = parent;
+        }
+      }
+
+      // Convert file tree path to URL path
+      // Files in /public/* are served at /* by Vite
+      let src = spriteSrc;
+      if (src.startsWith('/public/')) {
+        src = src.replace('/public/', '/');
+      }
+
+      // Create and attach SpriteComponent
+      const sprite = new SpriteComponent(go, { src });
+      go.addComponent(sprite);
+
+      // Add to scene
+      state.currentScene.add(go);
+
+      // Call awake() so the sprite renders immediately (editor preview mode)
+      go.awake();
 
       return {
         selectedGameObjectIds: [go.id],

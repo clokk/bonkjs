@@ -9,6 +9,13 @@ import { Input } from '@engine/Input';
 import { loadSceneByName } from '@engine/SceneLoader';
 import { Camera2DComponent } from '@engine/components/Camera2DComponent';
 import { AudioManager } from '@engine/audio';
+import { screenToWorld } from '@editor/lib/coordinates';
+import {
+  useDragTarget,
+  isImageFile,
+  fileNameWithoutExtension,
+  type DragData,
+} from '@editor/hooks/useDragAndDrop';
 
 // Register components and behaviors
 import '@engine/components';
@@ -72,8 +79,39 @@ export const EditorViewport: React.FC = () => {
   const currentSceneName = useEditorStore((state) => state.currentSceneName);
   const setStoreSceneName = useEditorStore((state) => state.setCurrentSceneName);
 
+  const createGameObjectWithSprite = useEditorStore(
+    (state) => state.createGameObjectWithSprite
+  );
+
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Drag and drop handling
+  const handleDrop = useCallback(
+    (data: DragData, event: React.DragEvent) => {
+      if (data.type !== 'file' || !isImageFile(data.path)) return;
+      if (!containerRef.current) return;
+
+      // Calculate world position from drop coordinates
+      const rect = containerRef.current.getBoundingClientRect();
+      const screenX = event.clientX - rect.left;
+      const screenY = event.clientY - rect.top;
+
+      const renderer = getRenderer();
+      const worldPos = screenToWorld(screenX, screenY, renderer);
+
+      // Create the sprite GameObject at the drop position
+      const name = fileNameWithoutExtension(data.path);
+      createGameObjectWithSprite(name, data.path, worldPos);
+    },
+    [createGameObjectWithSprite]
+  );
+
+  const { isDragOver, dragTargetProps } = useDragTarget(
+    handleDrop,
+    (data) => data.type === 'file' && isImageFile(data.path)
+  );
+
 
   // Warn user before leaving if there are unsaved changes
   useEffect(() => {
@@ -353,16 +391,22 @@ export const EditorViewport: React.FC = () => {
 
   return (
     <div
-      className={`w-full h-full bg-zinc-950 relative group rounded-xl overflow-hidden border-2 ${
-        isPlaying && !isPaused
-          ? 'border-green-500/50'
-          : isPaused
-            ? 'border-yellow-500/50'
-            : 'border-zinc-800'
+      className={`w-full h-full bg-zinc-950 relative group rounded-xl overflow-hidden border-2 transition-colors ${
+        isDragOver
+          ? 'border-sky-400 bg-sky-400/5'
+          : isPlaying && !isPaused
+            ? 'border-green-500/50'
+            : isPaused
+              ? 'border-yellow-500/50'
+              : 'border-zinc-800'
       }`}
     >
       {/* Canvas Container */}
-      <div ref={containerRef} className="absolute inset-0 z-0">
+      <div
+        ref={containerRef}
+        className="absolute inset-0 z-0"
+        {...dragTargetProps}
+      >
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-zinc-950">
             <div className="text-zinc-500 text-sm">Loading scene...</div>

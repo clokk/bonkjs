@@ -16,8 +16,8 @@ bonk-engine/
 │   │   └── types/        # TypeScript type definitions
 │   ├── editor/           # Tauri-based editor application
 │   │   ├── components/   # React UI components (panels, viewport, etc.)
-│   │   ├── hooks/        # React hooks (useFileTree, useSelectedGameObject)
-│   │   ├── lib/          # Utilities (filesystem, cn)
+│   │   ├── hooks/        # React hooks (useFileTree, useDragAndDrop, etc.)
+│   │   ├── lib/          # Utilities (filesystem, coordinates, cn)
 │   │   └── store/        # Zustand state management
 │   └── main.ts           # Demo game entry point
 ├── src-tauri/            # Tauri Rust backend for editor
@@ -227,6 +227,25 @@ Right-click in panels for context-sensitive actions:
 - **Project Files**: New File, New Folder, Rename, Delete, Copy Path
 - **Hierarchy (on GameObject)**: Duplicate, Rename, Create Empty Child, Delete
 - **Hierarchy (empty space)**: Create Empty
+
+### Drag and Drop
+
+Drag image files (PNG, JPG, GIF, WebP) from Project Files to create sprite GameObjects:
+
+| Drop Target | Result |
+|-------------|--------|
+| **Viewport** | Creates sprite at world position (mouse location) |
+| **Hierarchy (empty space)** | Creates sprite at scene root, position [0, 0] |
+| **Hierarchy (on GameObject)** | Creates sprite as child of that GameObject |
+
+Visual feedback:
+- Draggable files show grab cursor
+- Valid drop targets highlight with sky-blue border/ring
+- Parent nodes auto-expand when dropping as child
+
+Implementation files:
+- `src/editor/hooks/useDragAndDrop.ts` - Drag/drop utilities and hooks
+- `src/editor/lib/coordinates.ts` - Screen-to-world coordinate conversion
 
 ### Tauri Commands
 Custom Rust commands exposed to the frontend:

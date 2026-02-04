@@ -24,7 +24,7 @@ export const isTauri = (): boolean => {
 /**
  * Project directories to scan for the file tree.
  */
-const PROJECT_DIRS = ['scenes', 'behaviors', 'prefabs', 'assets'] as const;
+const PROJECT_DIRS = ['scenes', 'behaviors', 'prefabs', 'assets', 'public'] as const;
 
 /**
  * Recursively read a directory and build a FileNode tree.

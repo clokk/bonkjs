@@ -135,6 +135,9 @@ export interface Renderer {
   /** Get current camera position */
   getCameraPosition(): { x: number; y: number };
 
+  /** Get current camera zoom level */
+  getCameraZoom(): number;
+
   // ==================== UI Support ====================
 
   /**

@@ -372,6 +372,10 @@ export class PixiRenderer implements Renderer {
     return { x: this.cameraX, y: this.cameraY };
   }
 
+  getCameraZoom(): number {
+    return this.cameraZoom;
+  }
+
   // ==================== UI Support ====================
 
   getUIContainer(): Container | null {
