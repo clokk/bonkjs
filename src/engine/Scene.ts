@@ -88,31 +88,52 @@ export class Scene implements IScene {
 
     if (!goA || !goB) return;
 
-    const contact: ContactInfo =
-      event.contacts[0] ?? { point: [0, 0], normal: [0, 0] };
-
-    // Route to all behaviors on both GameObjects
-    for (const behavior of goA.getAllBehaviors()) {
-      if (!behavior.enabled) continue;
-      if (type === 'enter') {
-        behavior.onCollisionEnter?.(goB, contact);
-      } else {
-        behavior.onCollisionExit?.(goB);
+    if (event.isSensor) {
+      // Trigger callbacks — sensors don't generate contact points
+      for (const behavior of goA.getAllBehaviors()) {
+        if (!behavior.enabled) continue;
+        if (type === 'enter') {
+          behavior.onTriggerEnter?.(goB);
+        } else {
+          behavior.onTriggerExit?.(goB);
+        }
       }
-    }
 
-    // Flip normal for the other object
-    const flippedContact: ContactInfo = {
-      point: contact.point,
-      normal: [-contact.normal[0], -contact.normal[1]] as Vector2,
-    };
+      for (const behavior of goB.getAllBehaviors()) {
+        if (!behavior.enabled) continue;
+        if (type === 'enter') {
+          behavior.onTriggerEnter?.(goA);
+        } else {
+          behavior.onTriggerExit?.(goA);
+        }
+      }
+    } else {
+      // Physical collision callbacks
+      const contact: ContactInfo =
+        event.contacts[0] ?? { point: [0, 0], normal: [0, 0] };
 
-    for (const behavior of goB.getAllBehaviors()) {
-      if (!behavior.enabled) continue;
-      if (type === 'enter') {
-        behavior.onCollisionEnter?.(goA, flippedContact);
-      } else {
-        behavior.onCollisionExit?.(goA);
+      for (const behavior of goA.getAllBehaviors()) {
+        if (!behavior.enabled) continue;
+        if (type === 'enter') {
+          behavior.onCollisionEnter?.(goB, contact);
+        } else {
+          behavior.onCollisionExit?.(goB);
+        }
+      }
+
+      // Flip normal for the other object
+      const flippedContact: ContactInfo = {
+        point: contact.point,
+        normal: [-contact.normal[0], -contact.normal[1]] as Vector2,
+      };
+
+      for (const behavior of goB.getAllBehaviors()) {
+        if (!behavior.enabled) continue;
+        if (type === 'enter') {
+          behavior.onCollisionEnter?.(goA, flippedContact);
+        } else {
+          behavior.onCollisionExit?.(goA);
+        }
       }
     }
   }

@@ -20,6 +20,7 @@ export {
 } from './PhysicsWorld';
 
 export { MatterPhysicsWorld } from './MatterPhysicsWorld';
+export { CollisionLayers } from './CollisionLayers';
 
 // Auto-register Matter.js backend
 import './MatterPhysicsWorld';

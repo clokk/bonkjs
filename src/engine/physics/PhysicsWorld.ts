@@ -63,6 +63,7 @@ export interface CollisionEvent {
   bodyA: PhysicsBody;
   bodyB: PhysicsBody;
   contacts: Array<{ point: Vector2; normal: Vector2 }>;
+  isSensor: boolean;
 }
 
 /** Collision callback type */

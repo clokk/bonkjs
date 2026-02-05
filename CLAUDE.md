@@ -203,7 +203,7 @@ Most component properties can be edited directly in the Inspector:
 |-----------|---------------------|
 | **Transform** | position, rotation, scale, zIndex |
 | **Sprite** | anchor, alpha, flipX, flipY |
-| **Collider2D** | width/height (box), radius (circle), offset, isTrigger |
+| **Collider2D** | width/height (box), radius (circle), offset, isTrigger, layer, mask |
 | **RigidBody2D** | mass, friction, restitution, gravityScale, damping, fixedRotation |
 | **Camera2D** | isMain, zoom, followSmoothing, offset |
 | **GameObject** | name, tag, enabled |

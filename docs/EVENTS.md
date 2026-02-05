@@ -69,10 +69,10 @@ The engine emits these automatically via `GlobalEvents`:
 | `EngineEvents.SCENE_UNLOAD` | | Scene unloaded |
 | `EngineEvents.PAUSE` | | Game paused |
 | `EngineEvents.RESUME` | | Game resumed |
-| `EngineEvents.COLLISION_ENTER` | | Physics collision starts |
-| `EngineEvents.COLLISION_EXIT` | | Physics collision ends |
-| `EngineEvents.TRIGGER_ENTER` | | Trigger area entered |
-| `EngineEvents.TRIGGER_EXIT` | | Trigger area exited |
+| `EngineEvents.COLLISION_ENTER` | | Physical collision starts (non-sensor bodies) |
+| `EngineEvents.COLLISION_EXIT` | | Physical collision ends (non-sensor bodies) |
+| `EngineEvents.TRIGGER_ENTER` | | Sensor overlap detected (`isTrigger: true` on either body) |
+| `EngineEvents.TRIGGER_EXIT` | | Sensor overlap ended |
 
 ```typescript
 GlobalEvents.on(EngineEvents.SCENE_LOAD_END, ({ name, scene }) => {

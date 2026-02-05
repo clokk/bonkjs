@@ -14,6 +14,7 @@ import type {
   BehaviorJson,
   PrefabJson,
 } from './types';
+import { CollisionLayers } from './physics/CollisionLayers';
 
 /** Prefab cache */
 const prefabCache = new Map<string, PrefabJson>();
@@ -165,6 +166,13 @@ export async function loadScene(url: string, options?: LoadSceneOptions): Promis
 /** Load a scene from JSON data */
 export async function loadSceneFromJson(json: SceneJson, options?: LoadSceneOptions): Promise<Scene> {
   GlobalEvents.emit(EngineEvents.SCENE_LOAD_START, { name: json.name });
+
+  // Register declared collision layers
+  if (json.settings?.collisionLayers) {
+    for (const layer of json.settings.collisionLayers) {
+      CollisionLayers.register(layer);
+    }
+  }
 
   // Create scene
   const scene = new Scene(json.name, json.version, json.settings);

@@ -50,6 +50,8 @@ Defines the collision shape. Requires RigidBody2D on same GameObject.
 | `shape` | `ColliderShape` | required | Collision shape |
 | `isTrigger` | `boolean` | `false` | Detect overlap without collision |
 | `offset` | `[x, y]` | `[0, 0]` | Offset from transform |
+| `layer` | `string` | `'default'` | Collision layer this collider belongs to |
+| `mask` | `string[]` | `[]` (all) | Layers this collider interacts with |
 
 **Shapes:**
 ```typescript
@@ -65,7 +67,7 @@ shape={{ type: 'polygon', vertices: [[0,0], [32,0], [16,32]] }}
 
 ## Collision Callbacks
 
-Behaviors can respond to collisions:
+Behaviors can respond to physical collisions (non-sensor bodies):
 
 ```typescript
 class MyBehavior extends Behavior {
@@ -78,16 +80,85 @@ class MyBehavior extends Behavior {
   onCollisionExit(other: GameObject): void {
     console.log('Stopped touching:', other.name);
   }
+}
+```
 
-  // For trigger colliders (isTrigger: true)
+## Triggers
+
+A collider with `isTrigger: true` is a **sensor** — it detects overlaps without physical collision response. Sensor collisions route to `onTriggerEnter`/`onTriggerExit` instead of `onCollisionEnter`/`onCollisionExit`.
+
+```typescript
+class PickupZone extends Behavior {
   onTriggerEnter(other: GameObject): void {
-    console.log('Entered trigger zone');
+    if (other.tag === 'Player') {
+      console.log('Player entered pickup zone');
+      this.destroy();
+    }
   }
 
   onTriggerExit(other: GameObject): void {
-    console.log('Left trigger zone');
+    console.log('Left the zone');
   }
 }
+```
+
+Key differences from collision callbacks:
+- Trigger callbacks do **not** receive `ContactInfo` — sensors don't generate contact points
+- If either body in a pair is a sensor, trigger callbacks fire (not collision callbacks)
+
+Common use cases: pickup zones, damage areas, checkpoints, level transitions.
+
+## Collision Layers
+
+Collision layers control which objects can collide with each other using bitmask filtering.
+
+### Declaring Layers
+
+Declare layers upfront in scene settings (optional — layers auto-register on first use):
+
+```json
+{
+  "settings": {
+    "gravity": [0, 980],
+    "collisionLayers": ["default", "player", "enemy", "projectile", "trigger"]
+  }
+}
+```
+
+### Configuring on Collider2D
+
+Each collider has a `layer` (what it is) and `mask` (what it collides with):
+
+```json
+{
+  "type": "Collider2D",
+  "shape": { "type": "box", "width": 32, "height": 32 },
+  "layer": "projectile",
+  "mask": ["enemy"]
+}
+```
+
+- **`layer`** — Which layer this collider belongs to. Default: `"default"`.
+- **`mask`** — Which layers this collider interacts with. Empty = collides with everything.
+
+### Example Setup
+
+| Object | Layer | Mask | Result |
+|--------|-------|------|--------|
+| Player | `"player"` | (empty) | Collides with everything |
+| Enemy | `"enemy"` | `["player", "projectile"]` | Collides with player and projectiles only |
+| Bullet | `"projectile"` | `["enemy"]` | Passes through player, hits enemies |
+| Ground | `"default"` | (empty) | Collides with everything |
+
+### Runtime API
+
+```typescript
+import { CollisionLayers } from '../src/engine';
+
+CollisionLayers.register('player');           // Pre-register a layer
+CollisionLayers.category('projectile');       // Get bitmask (auto-registers)
+CollisionLayers.mask(['player', 'enemy']);    // Get combined bitmask
+CollisionLayers.getLayerNames();              // All registered names
 ```
 
 ## Scene Usage
@@ -134,6 +205,7 @@ const hit = this.gameObject.scene.physicsWorld.raycast(
 );
 if (hit) {
   console.log('Hit at:', hit.point);
+  console.log('Surface normal:', hit.normal);  // actual surface normal
   console.log('Distance:', hit.distance);
 }
 
@@ -173,5 +245,5 @@ With `speed = 250` and `fixedDeltaTime = 1/60`:
 1. **Performance**: Use simple shapes (box, circle) over polygons
 2. **Tunneling**: For fast-moving objects, use smaller colliders or continuous collision detection
 3. **Stacking**: Use low restitution (0) for stable stacks
-4. **One-way platforms**: Set collision filtering by layer (future feature)
+4. **One-way platforms**: Use collision layers to filter which objects interact
 5. **Input timing**: Ensure `Input.update()` is called at the END of the frame so `getButtonDown` works in `fixedUpdate`

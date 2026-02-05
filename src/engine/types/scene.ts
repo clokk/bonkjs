@@ -45,6 +45,7 @@ export interface SceneSettingsJson {
   gravity?: Vector2;
   backgroundColor?: ColorValue;
   pixelsPerUnit?: number;
+  collisionLayers?: string[];
 }
 
 /** Root scene JSON structure */

@@ -16,6 +16,7 @@ import type {
 } from './PhysicsWorld';
 import { registerPhysicsBackend } from './PhysicsWorld';
 import type { Vector2 } from '../types';
+import { CollisionLayers } from './CollisionLayers';
 
 /** Matter.js body wrapper */
 class MatterBody implements PhysicsBody {
@@ -120,6 +121,7 @@ export class MatterPhysicsWorld implements PhysicsWorld {
                 pair.collision.normal.y,
               ] as Vector2,
             })),
+            isSensor: pair.isSensor,
           };
           for (const callback of this.collisionStartCallbacks) {
             callback(collisionEvent);
@@ -137,6 +139,7 @@ export class MatterPhysicsWorld implements PhysicsWorld {
             bodyA,
             bodyB,
             contacts: [],
+            isSensor: pair.isSensor,
           };
           for (const callback of this.collisionEndCallbacks) {
             callback(collisionEvent);
@@ -192,6 +195,15 @@ export class MatterPhysicsWorld implements PhysicsWorld {
     const oldBody = wrapper.matterBody;
     const offset = config.offset ?? [0, 0];
 
+    // Build collision filter from layer/mask config
+    const collisionFilter: Matter.ICollisionFilter = {};
+    if (config.layer) {
+      collisionFilter.category = CollisionLayers.category(config.layer);
+    }
+    if (config.mask && config.mask.length > 0) {
+      collisionFilter.mask = CollisionLayers.mask(config.mask);
+    }
+
     // Preserve properties from old body
     const bodyOptions: Matter.IBodyDefinition = {
       isStatic: oldBody.isStatic,
@@ -201,6 +213,7 @@ export class MatterPhysicsWorld implements PhysicsWorld {
       frictionAir: oldBody.frictionAir,
       angle: oldBody.angle,
       inertia: oldBody.inertia,
+      collisionFilter: Object.keys(collisionFilter).length > 0 ? collisionFilter : undefined,
     };
 
     // Copy custom gravityScale if present
@@ -304,19 +317,25 @@ export class MatterPhysicsWorld implements PhysicsWorld {
 
     if (collisions.length === 0) return null;
 
-    // Find closest
+    // Find closest by distance to support point (actual hit), not body center
     let closest = collisions[0];
     let closestDist = Infinity;
+    let closestPoint: { x: number; y: number } | null = null;
 
     for (const collision of collisions) {
-      // bodyA is the ray body, bodyB is the hit body
+      // Use support point if available, otherwise fall back to body position
+      const support = collision.supports?.[0];
       const hitBody = collision.bodyB ?? collision.bodyA;
-      const dx = hitBody.position.x - origin[0];
-      const dy = hitBody.position.y - origin[1];
+      const px = support ? support.x : hitBody.position.x;
+      const py = support ? support.y : hitBody.position.y;
+
+      const dx = px - origin[0];
+      const dy = py - origin[1];
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist < closestDist) {
         closestDist = dist;
         closest = collision;
+        closestPoint = { x: px, y: py };
       }
     }
 
@@ -324,10 +343,13 @@ export class MatterPhysicsWorld implements PhysicsWorld {
     const body = this.bodies.get(hitBody.id);
     if (!body) return null;
 
+    // Use support point for hit location, collision normal for surface direction
+    const point = closestPoint ?? { x: hitBody.position.x, y: hitBody.position.y };
+
     return {
       body,
-      point: [hitBody.position.x, hitBody.position.y],
-      normal: [0, -1], // Simplified - Matter.js doesn't give easy normals
+      point: [point.x, point.y] as Vector2,
+      normal: [closest.normal.x, closest.normal.y] as Vector2,
       distance: closestDist,
     };
   }

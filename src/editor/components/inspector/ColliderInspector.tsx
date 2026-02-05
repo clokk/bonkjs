@@ -7,6 +7,7 @@ import {
 } from './EditableInputs';
 import { usePropertyChange } from '@editor/hooks/usePropertyChange';
 import type { Collider2DComponent } from '@engine/components/Collider2DComponent';
+import { CollisionLayers } from '@engine/physics/CollisionLayers';
 
 interface ColliderInspectorProps {
   collider: Collider2DComponent | null;
@@ -58,6 +59,36 @@ export const ColliderInspector: React.FC<ColliderInspectorProps> = ({
     (checked: boolean) => {
       if (!collider) return;
       collider.isTrigger = checked;
+      markDirty();
+    },
+    [collider, markDirty]
+  );
+
+  const handleLayerChange = useCallback(
+    (e: React.ChangeEvent<HTMLSelectElement>) => {
+      if (!collider) return;
+      collider.layer = e.target.value === 'default' ? undefined : e.target.value;
+      markDirty();
+    },
+    [collider, markDirty]
+  );
+
+  const handleMaskToggle = useCallback(
+    (layerName: string, checked: boolean) => {
+      if (!collider) return;
+      const allLayers = CollisionLayers.getLayerNames();
+      const currentMask = collider.mask ?? [];
+
+      if (checked) {
+        const newMask = [...currentMask, layerName];
+        // If all layers are now selected, clear mask (= collide with all)
+        collider.mask = newMask.length >= allLayers.length ? undefined : newMask;
+      } else {
+        const newMask = currentMask.length === 0
+          ? allLayers.filter((n) => n !== layerName)
+          : currentMask.filter((n) => n !== layerName);
+        collider.mask = newMask.length === 0 ? undefined : newMask;
+      }
       markDirty();
     },
     [collider, markDirty]
@@ -160,6 +191,49 @@ export const ColliderInspector: React.FC<ColliderInspectorProps> = ({
             <span className="text-[10px] text-zinc-500">
               {collider.isTrigger ? 'No physics response' : 'Physical collision'}
             </span>
+          </div>
+
+          {/* Collision Layer */}
+          <div className="flex items-center gap-2">
+            <label className="text-[10px] text-zinc-500 w-12">Layer</label>
+            <select
+              value={collider.layer || 'default'}
+              onChange={handleLayerChange}
+              className="flex-1 h-6 text-[11px] bg-zinc-900 text-zinc-300 border border-zinc-700 rounded px-1.5 outline-none focus:border-sky-500"
+            >
+              {CollisionLayers.getLayerNames().map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Collision Mask */}
+          <div className="flex gap-2">
+            <label className="text-[10px] text-zinc-500 w-12 pt-0.5">
+              Collides
+            </label>
+            <div className="flex-1 flex flex-wrap gap-x-3 gap-y-1">
+              {CollisionLayers.getLayerNames().map((name) => (
+                <label
+                  key={name}
+                  className="flex items-center gap-1 text-[10px] text-zinc-400 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={
+                      !collider.mask ||
+                      collider.mask.length === 0 ||
+                      collider.mask.includes(name)
+                    }
+                    onChange={(e) => handleMaskToggle(name, e.target.checked)}
+                    className="w-3 h-3 accent-sky-500"
+                  />
+                  {name}
+                </label>
+              ))}
+            </div>
           </div>
         </div>
       )}

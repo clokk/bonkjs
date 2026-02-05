@@ -10,7 +10,8 @@ Scenes are JSON files in `public/scenes/`. The engine fetches them via HTTP at r
   "version": 1,
   "settings": {
     "gravity": [0, 980],
-    "backgroundColor": "#1a1a2e"
+    "backgroundColor": "#1a1a2e",
+    "collisionLayers": ["default", "player", "enemy", "projectile"]
   },
   "gameObjects": [
     {
@@ -27,7 +28,7 @@ Scenes are JSON files in `public/scenes/`. The engine fetches them via HTTP at r
       "components": [
         { "type": "Sprite", "src": "./sprites/player.png", "anchor": [0.5, 0.5] },
         { "type": "RigidBody2D", "bodyType": "dynamic", "mass": 1 },
-        { "type": "Collider2D", "shape": { "type": "box", "width": 32, "height": 64 } }
+        { "type": "Collider2D", "shape": { "type": "box", "width": 32, "height": 64 }, "layer": "player" }
       ],
       "behaviors": [
         { "src": "./behaviors/PlayerController.ts", "props": { "speed": 200 } }
