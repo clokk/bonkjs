@@ -264,16 +264,24 @@ Based on the research:
 
 3. **Separation of structure and style** - Like Unity's UXML/USS split, keep layout and appearance separate
 
-4. **MDX-native** - Define UI in the same MDX format as scenes:
-   ```mdx
-   <UI>
-     <Panel anchor="top-right" padding={10}>
-       <HBox gap={5}>
-         <Image src="./ui/heart.png" />
-         <Text style="health">{health}</Text>
-       </HBox>
-     </Panel>
-   </UI>
+4. **Scene-native** - Define UI in the same JSON format as scenes:
+   ```json
+   {
+     "type": "UI",
+     "children": [{
+       "type": "Panel",
+       "anchor": "top-right",
+       "padding": 10,
+       "children": [{
+         "type": "HBox",
+         "gap": 5,
+         "children": [
+           { "type": "Image", "src": "./ui/heart.png" },
+           { "type": "Text", "style": "health", "text": "{health}" }
+         ]
+       }]
+     }]
+   }
    ```
 
 5. **Game-first, not app-first** - Optimize for common game UI patterns (HUD, menus, dialogs) rather than complex app interfaces

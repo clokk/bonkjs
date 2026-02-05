@@ -6,14 +6,17 @@ Bonk Engine uses a Camera2D component for viewport control.
 
 Add a Camera2D component to any GameObject:
 
-```mdx
-<GameObject name="MainCamera" position={[400, 300]}>
-  <Camera2D
-    target="Player"
-    zoom={1}
-    followSmoothing={8}
-  />
-</GameObject>
+```json
+{
+  "name": "MainCamera",
+  "transform": { "position": [400, 300], "rotation": 0, "scale": [1, 1] },
+  "components": [{
+    "type": "Camera2D",
+    "target": "Player",
+    "zoom": 1,
+    "followSmoothing": 8
+  }]
+}
 ```
 
 ## Properties
@@ -32,37 +35,25 @@ Add a Camera2D component to any GameObject:
 
 The camera smoothly follows a target GameObject:
 
-```mdx
-<Camera2D
-  target="Player"
-  followSmoothing={10}
-  offset={[0, -50]}  <!-- Look slightly above player -->
-/>
+```json
+{ "type": "Camera2D", "target": "Player", "followSmoothing": 10, "offset": [0, -50] }
 ```
 
 Higher `followSmoothing` = tighter follow. Use lower values for a looser, more cinematic feel.
 
 ## Zoom
 
-```mdx
-<Camera2D zoom={2} />   <!-- 2x zoom (closer) -->
-<Camera2D zoom={0.5} /> <!-- 0.5x zoom (further) -->
+```json
+{ "type": "Camera2D", "zoom": 2 }
+{ "type": "Camera2D", "zoom": 0.5 }
 ```
 
 ## Bounds
 
 Constrain the camera to world limits:
 
-```mdx
-<Camera2D
-  target="Player"
-  bounds={{
-    minX: 0,
-    minY: 0,
-    maxX: 1600,
-    maxY: 900
-  }}
-/>
+```json
+{ "type": "Camera2D", "target": "Player", "bounds": { "minX": 0, "minY": 0, "maxX": 1600, "maxY": 900 } }
 ```
 
 The camera will stop scrolling when it reaches the edge of bounds.
@@ -71,11 +62,8 @@ The camera will stop scrolling when it reaches the edge of bounds.
 
 Allow the target to move within a zone before camera follows:
 
-```mdx
-<Camera2D
-  target="Player"
-  deadzone={{ width: 100, height: 50 }}
-/>
+```json
+{ "type": "Camera2D", "target": "Player", "deadzone": { "width": 100, "height": 50 } }
 ```
 
 Useful for platformers where you don't want constant horizontal camera movement.

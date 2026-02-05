@@ -43,7 +43,7 @@ const getFileIcon = (name: string) => {
     case 'tsx':
     case 'js':
       return <FileCode size={12} className="text-yellow-400" />;
-    case 'mdx':
+    case 'json':
       return <FileText size={12} className="text-green-400" />;
     case 'png':
     case 'jpg':
@@ -97,9 +97,9 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
 
   const handleDoubleClick = () => {
     if (!isFolder) {
-      // Check if it's a scene file (.mdx in scenes folder)
-      if (node.path.startsWith('/scenes/') && node.name.endsWith('.mdx')) {
-        const sceneName = node.name.replace('.mdx', '');
+      // Check if it's a scene file (.json in scenes folder)
+      if (node.path.startsWith('/scenes/') && node.name.endsWith('.json')) {
+        const sceneName = node.name.replace('.json', '');
         onLoadScene(sceneName);
       } else {
         console.log('Open file:', node.path);

@@ -1,6 +1,6 @@
 # Bonk Engine
 
-A 2D game engine with MDX scene format, designed for AI collaboration.
+A 2D game engine with JSON scene format, designed for AI collaboration.
 
 ## Quick Start
 
@@ -15,11 +15,10 @@ npm run dev
 BUILD TIME                                    RUNTIME
 ─────────────────────────────────────────    ─────────────────────────────
 
-scenes/Level1.mdx  ───┐
-scenes/Level2.mdx  ───┼─► Vite Plugin ─────► /scenes/*.json ──► SceneLoader
-prefabs/*.mdx      ───┘   (recma transform)                         │
-                                                                    │
-behaviors/*.ts     ───────► esbuild ───────► /behaviors/*.js ───────┤
+public/scenes/*.json  ──────────────────► SceneLoader
+public/prefabs/*.json ──────────────────►     │
+                                              │
+behaviors/*.ts     ───────► esbuild ─────────►│
                                                                     │
                                                                     ▼
                                               Vanilla TS Game Loop (No React)
@@ -40,11 +39,7 @@ bonk-engine/
 │   │   ├── rendering/       # Rendering abstraction (PixiJS)
 │   │   └── types/           # TypeScript type definitions
 │   └── main.ts              # Demo game entry point
-├── tools/
-│   └── vite-plugin-bonk-scenes/  # MDX → JSON compiler
 ├── behaviors/               # Game behaviors (scripts)
-├── scenes/                  # MDX scene files
-├── prefabs/                 # MDX prefab files
 ├── docs/                    # Architecture & vision docs
 └── public/                  # Compiled output
 ```
@@ -63,19 +58,25 @@ Bonk Engine uses PixiJS v8 for rendering, wrapped in an abstraction layer:
 
 The rendering happens at the end of the game loop, after all updates are processed.
 
-## Scene Format (MDX)
+## Scene Format (JSON)
 
-```mdx
-# My Level
+Scenes live in `public/scenes/` as JSON:
 
-<Scene>
-  <Scene.Settings gravity={[0, 980]} backgroundColor="#1a1a2e" />
-
-  <GameObject name="Player" position={[100, 200]} tag="Player">
-    <Sprite src="./sprites/player.png" />
-    <Behavior src="./behaviors/PlayerController.ts" props={{ speed: 200 }} />
-  </GameObject>
-</Scene>
+```json
+{
+  "name": "Level1",
+  "version": 1,
+  "settings": { "gravity": [0, 980], "backgroundColor": "#1a1a2e" },
+  "gameObjects": [
+    {
+      "name": "Player",
+      "tag": "Player",
+      "transform": { "position": [100, 200], "rotation": 0, "scale": [1, 1] },
+      "components": [{ "type": "Sprite", "src": "./sprites/player.png" }],
+      "behaviors": [{ "src": "./behaviors/PlayerController.ts", "props": { "speed": 200 } }]
+    }
+  ]
+}
 ```
 
 ## Creating Behaviors
@@ -144,8 +145,13 @@ npm run typecheck  # Type checking
 
 ## Documentation
 
+- [docs/README.md](./docs/README.md) - **Start here** -- full docs index
 - [CLAUDE.md](./CLAUDE.md) - AI collaboration context and conventions
-- [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) - Full architecture documentation
+- [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) - Architecture and core classes
+- [docs/SCENES-AND-PREFABS.md](./docs/SCENES-AND-PREFABS.md) - Scene format, loading, prefabs
+- [docs/INPUT.md](./docs/INPUT.md) - Input system (axes, buttons, mouse)
+- [docs/TIME.md](./docs/TIME.md) - Time, delta time, timeScale
+- [docs/EVENTS.md](./docs/EVENTS.md) - Event system and messaging
 - [docs/VISION.md](./docs/VISION.md) - Product vision and design principles
 
 ## Future Architecture

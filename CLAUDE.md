@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A 2D game engine with MDX scene format, designed for AI collaboration. TypeScript-first, Unity-familiar patterns, web-native.
+A 2D game engine with JSON scene format, designed for AI collaboration. TypeScript-first, Unity-familiar patterns, web-native.
 
 ## Project Structure
 
@@ -22,10 +22,10 @@ bonk-engine/
 │   └── main.ts           # Demo game entry point
 ├── src-tauri/            # Tauri Rust backend for editor
 ├── behaviors/            # Game behaviors (scripts)
-├── scenes/               # MDX scene files
-├── prefabs/              # MDX prefab files
-├── tools/                # Build tooling (Vite plugin)
-└── public/               # Compiled scene JSON output
+├── public/
+│   ├── scenes/           # JSON scene files
+│   └── prefabs/          # JSON prefab files
+└── docs/                 # Architecture & design docs
 ```
 
 ## Conventions
@@ -34,7 +34,7 @@ bonk-engine/
 - **Behaviors**: PascalCase files and classes (`PlayerController.ts`)
 - **Props**: camelCase (`speed`, `jumpForce`)
 - **Components**: PascalCase with suffix (`SpriteComponent`)
-- **Scenes**: PascalCase (`Level1.mdx`)
+- **Scenes**: PascalCase (`Level1.json`)
 
 ### Code Style
 - Use TypeScript strict mode
@@ -109,23 +109,29 @@ registerComponent('MyComponent', (gameObject, data) => {
 | `src/engine/Scene.ts` | Scene management and lifecycle |
 | `src/engine/rendering/` | PixiJS rendering abstraction |
 | `src/engine/physics/` | Matter.js physics abstraction |
-| `tools/vite-plugin-bonk-scenes/` | MDX to JSON compiler |
+| `src/engine/SceneLoader.ts` | Scene/prefab JSON loader |
 | `src/editor/store/editorStore.ts` | Zustand store with scene state and actions |
 | `src/editor/lib/sceneSerializer.ts` | Scene saving to JSON |
 | `src/editor/components/layout/AppHeader.tsx` | Header bar with scene selector and save |
 
 ## Working With Scenes
 
-### MDX Scene Format
-```mdx
-<Scene>
-  <Scene.Settings gravity={[0, 980]} />
-
-  <GameObject name="Player" tag="Player" position={[100, 200]}>
-    <Sprite src="./player.png" />
-    <Behavior src="./behaviors/PlayerController.ts" props={{ speed: 200 }} />
-  </GameObject>
-</Scene>
+### JSON Scene Format
+```json
+{
+  "name": "Level1",
+  "version": 1,
+  "settings": { "gravity": [0, 980] },
+  "gameObjects": [
+    {
+      "name": "Player",
+      "tag": "Player",
+      "transform": { "position": [100, 200], "rotation": 0, "scale": [1, 1] },
+      "components": [{ "type": "Sprite", "src": "./player.png" }],
+      "behaviors": [{ "src": "./behaviors/PlayerController.ts", "props": { "speed": 200 } }]
+    }
+  ]
+}
 ```
 
 ### Loading Scenes
@@ -180,10 +186,7 @@ The editor is a Tauri desktop application with React frontend. It provides:
 
 ### Scene Saving
 
-Scenes are saved to JSON (not MDX). This is intentional:
-- MDX → JSON is handled by Vite plugin at build time
-- JSON → MDX would lose comments, formatting, and prose
-- JSON round-trips perfectly via existing `toJSON()` methods
+Scenes are saved as JSON, which round-trips perfectly via existing `toJSON()` methods.
 
 **Save location**: `public/scenes/{sceneName}.json`
 

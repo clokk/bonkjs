@@ -44,7 +44,7 @@ async function loadPrefab(path: string): Promise<PrefabJson> {
   // Convert path to URL
   const url = path.startsWith('http')
     ? path
-    : `${baseUrl}prefabs/${path.replace(/\.prefab\.mdx$/, '.json').replace(/^\.\/prefabs\//, '')}`;
+    : `${baseUrl}prefabs/${path.replace(/^\.\/prefabs\//, '').replace(/\.json$/, '')}.json`;
 
   const prefab = await fetchJson<PrefabJson>(url);
   prefabCache.set(path, prefab);

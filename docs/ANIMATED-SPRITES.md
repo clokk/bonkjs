@@ -6,20 +6,23 @@ Bonk Engine supports sprite sheet animation through the `AnimatedSprite` compone
 
 Add an AnimatedSprite component to a GameObject:
 
-```mdx
-<GameObject name="Player" position={[400, 300]}>
-  <AnimatedSprite
-    src="./sprites/player-sheet.png"
-    frameWidth={32}
-    frameHeight={32}
-    animations={{
-      idle: { frames: [0, 1, 2, 3], frameRate: 8, loop: true },
-      run: { frames: [4, 5, 6, 7, 8, 9], frameRate: 12, loop: true },
-      jump: { frames: [10, 11], frameRate: 10, loop: false }
-    }}
-    defaultAnimation="idle"
-  />
-</GameObject>
+```json
+{
+  "name": "Player",
+  "transform": { "position": [400, 300], "rotation": 0, "scale": [1, 1] },
+  "components": [{
+    "type": "AnimatedSprite",
+    "src": "./sprites/player-sheet.png",
+    "frameWidth": 32,
+    "frameHeight": 32,
+    "animations": {
+      "idle": { "frames": [0, 1, 2, 3], "frameRate": 8, "loop": true },
+      "run": { "frames": [4, 5, 6, 7, 8, 9], "frameRate": 12, "loop": true },
+      "jump": { "frames": [10, 11], "frameRate": 10, "loop": false }
+    },
+    "defaultAnimation": "idle"
+  }]
+}
 ```
 
 ## Sprite Sheet Layout
@@ -120,37 +123,29 @@ anim.onFrameChange = (frameIndex, animName) => {
 
 The `frames` array gives you full control over playback order:
 
-```mdx
-animations={{
-  // Simple forward sequence
-  walk: { frames: [0, 1, 2, 3], frameRate: 12, loop: true },
-
-  // Ping-pong (forward then backward)
-  breathe: { frames: [0, 1, 2, 1], frameRate: 6, loop: true },
-
-  // Skip frames for faster motion
-  dash: { frames: [0, 2, 4, 6], frameRate: 16, loop: false },
-
-  // Hold on a frame (for emphasis)
-  charge: { frames: [0, 0, 0, 1, 2, 3], frameRate: 12, loop: false },
-
-  // Reverse playback
-  rewind: { frames: [7, 6, 5, 4, 3, 2, 1, 0], frameRate: 12, loop: false }
-}}
+```json
+"animations": {
+  "walk": { "frames": [0, 1, 2, 3], "frameRate": 12, "loop": true },
+  "breathe": { "frames": [0, 1, 2, 1], "frameRate": 6, "loop": true },
+  "dash": { "frames": [0, 2, 4, 6], "frameRate": 16, "loop": false },
+  "charge": { "frames": [0, 0, 0, 1, 2, 3], "frameRate": 12, "loop": false },
+  "rewind": { "frames": [7, 6, 5, 4, 3, 2, 1, 0], "frameRate": 12, "loop": false }
+}
 ```
 
 ## Flipping Sprites
 
 Use `flipX` and `flipY` to mirror the sprite:
 
-```mdx
-<AnimatedSprite
-  src="./sprites/player.png"
-  frameWidth={32}
-  frameHeight={32}
-  animations={{ walk: { frames: [0, 1, 2, 3], frameRate: 12, loop: true } }}
-  flipX={true}  <!-- Mirror horizontally (face left instead of right) -->
-/>
+```json
+{
+  "type": "AnimatedSprite",
+  "src": "./sprites/player.png",
+  "frameWidth": 32,
+  "frameHeight": 32,
+  "animations": { "walk": { "frames": [0, 1, 2, 3], "frameRate": 12, "loop": true } },
+  "flipX": true
+}
 ```
 
 Or toggle at runtime:
@@ -182,24 +177,28 @@ Tools for creating sprite sheets:
 
 Complete player setup with multiple animations:
 
-```mdx
-<GameObject name="Player" tag="Player" position={[400, 300]}>
-  <AnimatedSprite
-    src="./sprites/hero-sheet.png"
-    frameWidth={48}
-    frameHeight={64}
-    animations={{
-      idle: { frames: [0, 1, 2, 3], frameRate: 8, loop: true },
-      run: { frames: [8, 9, 10, 11, 12, 13], frameRate: 12, loop: true },
-      jump: { frames: [16, 17], frameRate: 10, loop: false },
-      fall: { frames: [18], frameRate: 1, loop: false },
-      attack: { frames: [24, 25, 26, 27], frameRate: 16, loop: false }
-    }}
-    defaultAnimation="idle"
-    anchor={[0.5, 1]}
-  />
-  <Behavior src="./behaviors/PlayerController.ts" />
-</GameObject>
+```json
+{
+  "name": "Player",
+  "tag": "Player",
+  "transform": { "position": [400, 300], "rotation": 0, "scale": [1, 1] },
+  "components": [{
+    "type": "AnimatedSprite",
+    "src": "./sprites/hero-sheet.png",
+    "frameWidth": 48,
+    "frameHeight": 64,
+    "animations": {
+      "idle": { "frames": [0, 1, 2, 3], "frameRate": 8, "loop": true },
+      "run": { "frames": [8, 9, 10, 11, 12, 13], "frameRate": 12, "loop": true },
+      "jump": { "frames": [16, 17], "frameRate": 10, "loop": false },
+      "fall": { "frames": [18], "frameRate": 1, "loop": false },
+      "attack": { "frames": [24, 25, 26, 27], "frameRate": 16, "loop": false }
+    },
+    "defaultAnimation": "idle",
+    "anchor": [0.5, 1]
+  }],
+  "behaviors": [{ "src": "./behaviors/PlayerController.ts" }]
+}
 ```
 
 With controller behavior:

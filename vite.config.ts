@@ -1,5 +1,4 @@
 import { defineConfig } from 'vite';
-import { bonkScenes } from './tools/vite-plugin-bonk-scenes';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
@@ -9,7 +8,6 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [
-      bonkScenes(),
       ...(isEditor ? [react()] : []),
     ],
     resolve: {

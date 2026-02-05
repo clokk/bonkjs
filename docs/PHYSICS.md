@@ -92,25 +92,33 @@ class MyBehavior extends Behavior {
 
 ## Scene Usage
 
-```mdx
-<Scene>
-  <Scene.Settings gravity={[0, 980]} />
-
-  <GameObject name="Player">
-    <RigidBody2D bodyType="dynamic" />
-    <Collider2D shape={{ type: 'box', width: 32, height: 64 }} />
-  </GameObject>
-
-  <GameObject name="Ground">
-    <RigidBody2D bodyType="static" />
-    <Collider2D shape={{ type: 'box', width: 800, height: 32 }} />
-  </GameObject>
-
-  <GameObject name="Coin">
-    <RigidBody2D bodyType="kinematic" gravityScale={0} />
-    <Collider2D shape={{ type: 'circle', radius: 16 }} isTrigger={true} />
-  </GameObject>
-</Scene>
+```json
+{
+  "settings": { "gravity": [0, 980] },
+  "gameObjects": [
+    {
+      "name": "Player",
+      "components": [
+        { "type": "RigidBody2D", "bodyType": "dynamic" },
+        { "type": "Collider2D", "shape": { "type": "box", "width": 32, "height": 64 } }
+      ]
+    },
+    {
+      "name": "Ground",
+      "components": [
+        { "type": "RigidBody2D", "bodyType": "static" },
+        { "type": "Collider2D", "shape": { "type": "box", "width": 800, "height": 32 } }
+      ]
+    },
+    {
+      "name": "Coin",
+      "components": [
+        { "type": "RigidBody2D", "bodyType": "kinematic", "gravityScale": 0 },
+        { "type": "Collider2D", "shape": { "type": "circle", "radius": 16 }, "isTrigger": true }
+      ]
+    }
+  ]
+}
 ```
 
 ## Physics Queries

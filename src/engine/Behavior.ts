@@ -211,9 +211,16 @@ export abstract class Behavior {
     position?: [number, number],
     rotation?: number
   ): Promise<GameObject | null> {
-    // Defer to scene manager (will be implemented)
-    console.warn('instantiate not yet implemented');
-    return null;
+    const scene = this.gameObject.scene;
+    if (!scene) {
+      console.warn('Cannot instantiate: behavior has no scene');
+      return null;
+    }
+    const { instantiatePrefab } = await import('./SceneLoader');
+    // instantiatePrefab expects the concrete Scene type.
+    // The IScene interface is a subset — the concrete Scene is always
+    // what's assigned at runtime. Safe to cast here.
+    return instantiatePrefab(prefabPath, scene as any, position, rotation);
   }
 
   /** Destroy a GameObject */

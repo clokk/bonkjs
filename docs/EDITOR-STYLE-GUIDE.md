@@ -329,7 +329,7 @@ Custom webkit scrollbars:
 | Extension | Color | Icon |
 |-----------|-------|------|
 | `.ts`, `.tsx`, `.js` | `text-yellow-400` | `FileCode` |
-| `.mdx` | `text-green-400` | `FileText` |
+| `.json` | `text-green-400` | `FileText` |
 | `.png`, `.jpg`, `.gif` | `text-sky-400` | `Image` |
 | Folder | `text-yellow-400` | `Folder`/`FolderOpen` |
 | Default | `text-zinc-400` | `FileText` |

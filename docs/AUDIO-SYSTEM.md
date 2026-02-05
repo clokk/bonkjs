@@ -11,22 +11,21 @@ The audio system uses a hybrid approach:
 
 ## Quick Start
 
-### Basic Playback (MDX)
+### Basic Playback (JSON)
 
-```mdx
-<GameObject name="BackgroundMusic">
-  <AudioSource
-    src="./audio/music.mp3"
-    category="music"
-    loop={true}
-    playOnAwake={true}
-    volume={0.5}
-  />
-</GameObject>
-
-<GameObject name="Coin">
-  <AudioSource src="./audio/coin.wav" category="sfx" />
-</GameObject>
+```json
+{
+  "name": "BackgroundMusic",
+  "transform": { "position": [0, 0], "rotation": 0, "scale": [1, 1] },
+  "components": [{
+    "type": "AudioSource",
+    "src": "./audio/music.mp3",
+    "category": "music",
+    "loop": true,
+    "playOnAwake": true,
+    "volume": 0.5
+  }]
+}
 ```
 
 ### Playback from Behavior
@@ -166,17 +165,20 @@ audio.destroy();
 
 2D spatial audio uses stereo panning and distance-based volume falloff.
 
-```mdx
-<GameObject name="Waterfall" position={[500, 0, 0]}>
-  <AudioSource
-    src="./audio/ambient/waterfall.mp3"
-    spatial={true}
-    minDistance={100}
-    maxDistance={400}
-    loop={true}
-    playOnAwake={true}
-  />
-</GameObject>
+```json
+{
+  "name": "Waterfall",
+  "transform": { "position": [500, 0], "rotation": 0, "scale": [1, 1] },
+  "components": [{
+    "type": "AudioSource",
+    "src": "./audio/ambient/waterfall.mp3",
+    "spatial": true,
+    "minDistance": 100,
+    "maxDistance": 400,
+    "loop": true,
+    "playOnAwake": true
+  }]
+}
 ```
 
 ### How It Works

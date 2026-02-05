@@ -14,11 +14,10 @@ This document covers the runtime architecture.
 ```
 BUILD TIME                                    RUNTIME
 ─────────────────────────────────────────    ─────────────────────────────
-scenes/Level1.mdx  ───┐
-scenes/Level2.mdx  ───┼─► Vite Plugin ─────► /scenes/*.json ──► SceneLoader
-prefabs/*.mdx      ───┘   (recma transform)                         │
-                                                                    │
-behaviors/*.ts     ───────► esbuild ───────► /behaviors/*.js ───────┤
+public/scenes/*.json  ──────────────────► SceneLoader
+public/prefabs/*.json ──────────────────►     │
+                                              │
+behaviors/*.ts     ───────► esbuild ─────────►│
                                                                     │
                                                                     ▼
                                               Vanilla TS Game Loop (No React)
@@ -28,18 +27,9 @@ behaviors/*.ts     ───────► esbuild ───────► /be
                                     PixiJS Renderer       Matter.js Physics
 ```
 
-### MDX Compilation
+### Scene Format
 
-The Vite plugin (`tools/vite-plugin-bonk-scenes/`) compiles MDX scenes to JSON at build time:
-
-1. Parse MDX using `@mdx-js/mdx`
-2. Extract scene structure via recma (ESTree) transform
-3. Output JSON with all GameObjects, Components, and Behaviors
-
-This means:
-- No MDX runtime in the browser
-- Scenes are pure data at runtime
-- Fast loading, small bundle
+Scenes and prefabs are stored as JSON in `public/scenes/` and `public/prefabs/`. The engine's `SceneLoader` fetches these via HTTP at runtime. Scenes are pure data — fast loading, small bundle.
 
 ## Core Classes
 

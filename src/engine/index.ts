@@ -73,5 +73,8 @@ export * from './rendering';
 // UI System
 export * from './ui';
 
+// Math utilities
+export { vec2 } from './math/vec2';
+
 // Types
 export * from './types';

@@ -32,22 +32,25 @@
  * │  Frame indices are numbered left-to-right, top-to-bottom (like reading) │
  * └─────────────────────────────────────────────────────────────────────────┘
  *
- * USAGE IN MDX SCENES:
+ * USAGE IN JSON SCENES:
  *
- * ```mdx
- * <GameObject name="Player" position={[400, 300]}>
- *   <AnimatedSprite
- *     src="./sprites/player-sheet.png"
- *     frameWidth={32}
- *     frameHeight={32}
- *     animations={{
- *       idle: { frames: [0, 1, 2, 3], frameRate: 8, loop: true },
- *       run: { frames: [4, 5, 6, 7], frameRate: 12, loop: true },
- *       jump: { frames: [2], frameRate: 1, loop: false }
- *     }}
- *     defaultAnimation="idle"
- *   />
- * </GameObject>
+ * ```json
+ * {
+ *   "name": "Player",
+ *   "transform": { "position": [400, 300], "rotation": 0, "scale": [1, 1] },
+ *   "components": [{
+ *     "type": "AnimatedSprite",
+ *     "src": "./sprites/player-sheet.png",
+ *     "frameWidth": 32,
+ *     "frameHeight": 32,
+ *     "animations": {
+ *       "idle": { "frames": [0, 1, 2, 3], "frameRate": 8, "loop": true },
+ *       "run": { "frames": [4, 5, 6, 7], "frameRate": 12, "loop": true },
+ *       "jump": { "frames": [2], "frameRate": 1, "loop": false }
+ *     },
+ *     "defaultAnimation": "idle"
+ *   }]
+ * }
  * ```
  */
 
@@ -122,7 +125,7 @@ export class AnimatedSpriteComponent extends Component {
   readonly type = 'AnimatedSprite';
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // CONFIGURATION (from MDX)
+  // CONFIGURATION (from JSON)
   // ═══════════════════════════════════════════════════════════════════════════
 
   /** Path to the sprite sheet image */

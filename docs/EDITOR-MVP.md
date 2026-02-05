@@ -25,7 +25,7 @@ A Tauri-based editor for bonk-engine with the same panel layout as markdown-edit
 | Play/Pause/Stop controls | ✅ Complete | Play starts scene, Pause freezes without reset, Stop reloads scene |
 | Initial camera view | ✅ Complete | Viewport shows scene from Camera2D's starting position |
 | Hierarchy panel | ✅ Complete | Shows GameObjects from loaded scene |
-| Project file browser | ✅ Complete | Mock file tree, double-click to load scenes |
+| Project file browser | ✅ Complete | Real filesystem via Tauri FS, double-click to load scenes |
 | Console panel | ✅ Complete | Shows engine logs |
 | Claude terminal | ✅ Complete | xterm.js + PTY integration (Tauri only) |
 | Input debug overlay | ✅ Complete | Toggleable in viewport, shows axes/buttons/keys |
@@ -33,23 +33,23 @@ A Tauri-based editor for bonk-engine with the same panel layout as markdown-edit
 | Inspector ↔ Selection binding | ✅ Complete | Inspector reads actual data from selected GameObject |
 | Hierarchy type icons | ✅ Complete | Shows component-based icons for GameObjects |
 | Inspector component badges | ✅ Complete | Shows colored badges for all components |
-| Transform inspector | ✅ Complete | Shows real position, rotation, scale, zIndex (read-only) |
-| Sprite inspector | ✅ Complete | Shows src, anchor, tint, alpha, flip (read-only) |
-| Collider inspector | ✅ Complete | Shows shape, dimensions, offset, isTrigger (read-only) |
-| RigidBody inspector | ✅ Complete | Shows bodyType, mass, friction, damping, etc. (read-only) |
-| Camera inspector | ✅ Complete | Shows zoom, target, smoothing, bounds (read-only) |
-| Behavior inspector | ✅ Complete | Shows behavior names and custom props (read-only) |
+| Transform inspector | ✅ Complete | Editable position, rotation, scale, zIndex |
+| Sprite inspector | ✅ Complete | Editable anchor, alpha, flip |
+| Collider inspector | ✅ Complete | Editable shape, dimensions, offset, isTrigger |
+| RigidBody inspector | ✅ Complete | Editable mass, friction, damping, etc. |
+| Camera inspector | ✅ Complete | Editable zoom, target, smoothing, bounds |
+| Behavior inspector | ✅ Complete | Shows behavior names and custom props |
+| Scene saving | ✅ Complete | Cmd+S saves JSON to public/scenes/, dirty indicator in header |
+| Dirty state tracking | ✅ Complete | Unsaved changes indicator, beforeunload warning |
+| Real file system | ✅ Complete | Tauri FS plugin reads project directory |
+| Drag and drop sprites | ✅ Complete | Drag images from Project panel to viewport/hierarchy |
+| Keyboard shortcuts | ✅ Complete | Delete, Duplicate (Cmd+D), Save (Cmd+S), Refresh (Cmd+R) |
 
 ### Not Yet Functional
 
 | Feature | Status | What's Missing |
 |---------|--------|----------------|
-| Inspector editing | 🔶 Read-only | Inspector displays data but doesn't modify GameObjects yet |
 | Viewport click selection | ❌ Not implemented | Can't click objects in viewport to select |
-| Scene saving | ❌ Not implemented | No persistence back to MDX |
-| File dialogs | ❌ Not implemented | Open/Save buttons are non-functional |
-| Real file system | ❌ Not implemented | Project panel uses mock data |
-| Dirty state tracking | ❌ Not implemented | No unsaved changes indicator |
 
 ---
 
@@ -236,25 +236,9 @@ When a scene loads (or reloads via Stop), the viewport automatically positions i
 ## Next Steps (Priority Order)
 
 ### 1. ~~Connect Inspector to Selection~~ ✅ DONE
-- ~~When a GameObject is selected in Hierarchy, read its actual transform/components~~
-- ~~Bind Inspector inputs to modify the selected GameObject~~ (read-only implemented)
-- Update scene when values change (editing support - next priority)
-
-### 2. Inspector Editing Support
-- Add onChange handlers to inspector inputs
-- Update component values when inputs change
-- Mark scene as dirty when values change
-
-### 3. Real Project File System
-- Use Tauri FS plugin to read actual project directory
-- Watch for file changes
-- Support creating new files/folders
-
-### 4. Scene Persistence
-- Serialize modified scene back to JSON
-- Convert JSON to MDX format
-- Save via Tauri FS plugin
-- Track dirty state
+### 2. ~~Inspector Editing Support~~ ✅ DONE
+### 3. ~~Real Project File System~~ ✅ DONE
+### 4. ~~Scene Persistence~~ ✅ DONE
 
 ### 5. Viewport Selection
 - Raycast click position to find GameObject

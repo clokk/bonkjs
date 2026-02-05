@@ -224,7 +224,7 @@ export const EditorViewport: React.FC = () => {
 
         sceneRef.current = scene;
         setCurrentScene(scene);
-        setCurrentScenePath(`/scenes/${currentSceneName}.mdx`);
+        setCurrentScenePath(`/scenes/${currentSceneName}.json`);
 
         // Apply initial camera view
         applyInitialCameraView(scene);
@@ -349,7 +349,7 @@ export const EditorViewport: React.FC = () => {
         sceneRef.current = scene;
         setCurrentScene(scene);
         setStoreSceneName(pendingSceneLoad);
-        setCurrentScenePath(`/scenes/${pendingSceneLoad}.mdx`);
+        setCurrentScenePath(`/scenes/${pendingSceneLoad}.json`);
 
         // Apply initial camera view
         applyInitialCameraView(scene);
