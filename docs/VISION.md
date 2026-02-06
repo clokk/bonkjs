@@ -18,24 +18,41 @@ A platformer wants entity composition. A turn-based artillery game wants a state
 
 1. **TypeScript is the scene format** — No JSON intermediary. Game code is the source of truth.
 2. **Library, not framework** — Import what you need. No forced architecture.
-3. **The library is never required** — Games are standalone TypeScript projects. `npm run dev` works without Bonk tooling. Bonk provides modules you import, not an environment you run inside.
-4. **Tooling is optional visibility** — Bonk's dev tooling (viewport overlays, debug wireframes, runtime inspection) gives humans visibility into what Claude built. It's a Vite plugin you add to your config — not a dependency your game needs to function.
+3. **Layer 1 is never required as a whole** — Games are standalone TypeScript projects. `npm run dev` works without Bonk tooling. Import only the modules you need — a card game might use `@bonk/render` + `@bonk/input` and skip physics entirely.
+4. **Layer 3 is always optional** — Bonk's overlay (debug wireframes, performance monitoring, build targets) gives humans visibility into what Claude built. Add one line to `vite.config.ts` and it lights up. Remove it and nothing changes.
 5. **Claude is the editor** — The terminal is the primary interface. The viewport is for visual feedback.
 6. **Cross-platform from day one** — Web, desktop (Tauri/Steam), mobile (Capacitor).
 7. **AI-readable everything** — All text, all TypeScript, all diffable and mergeable.
 8. **Opinionated runtime, unopinionated structure** — The game loop, physics timestep, and render pipeline are well-defined. How you organize your game is up to you.
 9. **Approachable over intimidating** — The meme-friendly name is intentional.
 
-## Library vs Tooling
+## The Sandwich Model
 
-Bonk has two layers. Only the first is required.
+Bonk sandwiches the game in three layers. The game-specific code (Layer 2) is where Claude has total creative freedom. Layers 1 and 3 are game-agnostic — built once, reused across every game.
 
-**`bonk-engine`** (the library) — TypeScript modules for rendering, physics, input, audio. Import what you need. Your game is a standard Vite + TypeScript project. `npm run dev` works. `npm run build` works. No special runtime, no wrapper, no CLI.
+```
+┌─────────────────────────────────────────────────────────┐
+│  Layer 3: Bonk Overlay (game-agnostic dev tools)        │
+│  Debug wireframes, performance overlays, state          │
+│  inspection, build targets, hot reload                  │
+├─────────────────────────────────────────────────────────┤
+│  Layer 2: Game Code (Claude-authored, game-specific)    │
+│  Whatever architecture THIS game needs — turn systems,  │
+│  terrain, inventory, AI, state machines, ECS, nothing   │
+├─────────────────────────────────────────────────────────┤
+│  Layer 1: Bonk Runtime (game-agnostic tools)            │
+│  Rendering, physics, input, audio, math, camera, UI     │
+└─────────────────────────────────────────────────────────┘
+```
 
-**`bonk-vite-plugin`** (the tooling) — A Vite plugin that gives humans visibility into the game. Debug wireframes, physics body outlines, performance overlays, runtime state inspection. Add one line to `vite.config.ts` and it lights up. Remove it and nothing changes — your game still runs.
+**Layer 1** (`bonk-engine`) — TypeScript modules for rendering, physics, input, audio. Import what you need. Your game is a standard Vite + TypeScript project. `npm run dev` works. `npm run build` works. No special runtime, no wrapper, no CLI.
+
+**Layer 2** (game code) — Whatever Claude decides. Each game gets a fresh architecture. Nothing carries over except the Layer 1 primitives and Layer 3 tooling.
+
+**Layer 3** (the overlay) — A Vite plugin that gives humans visibility into the game. Debug wireframes, physics body outlines, performance overlays, runtime state inspection, cross-platform build targets.
 
 ```typescript
-// vite.config.ts — tooling is one optional line
+// vite.config.ts — Layer 3 is one optional line
 import { defineConfig } from 'vite';
 import bonk from 'bonk-vite-plugin'; // optional
 
@@ -44,9 +61,11 @@ export default defineConfig({
 });
 ```
 
-This is the React / React DevTools split. The game never knows the tooling exists. The tooling subscribes to engine events (body created, collision fired, sprite added) that the library emits at zero cost when nobody's listening. In production builds, the plugin isn't included.
+**The key contract:** Layer 1 emits lifecycle events (body created, collision fired, sprite added). Layer 3 subscribes to them. Layer 2 doesn't know either is watching. This is the React / React DevTools split — applied to entire games. In production builds, the plugin isn't included.
 
-**Why this matters for AI collaboration:** Claude writes game code against the library API. The human uses the tooling to see what Claude built — viewport, wireframes, state. Neither depends on the other. Claude doesn't need the tooling to write code. The human doesn't need Claude to use the tooling.
+**Layer 2 is disposable — per game and per era.** Each game gets a fresh architecture. More importantly, Layers 1 and 3 don't care *how* Layer 2 gets authored. Today it's "Claude writes TypeScript." If the authoring model changes — better AI, visual tools, something we can't predict — you swap the middle, keep the bread. The sandwich is future-proof because it makes no assumptions about what fills it.
+
+**Why this matters for AI collaboration:** Claude writes game code against the Layer 1 API. The human uses Layer 3 to see what Claude built — viewport, wireframes, state. Neither depends on the other. Claude doesn't need the tooling to write code. The human doesn't need Claude to use the tooling.
 
 ## AI Collaboration Design
 

@@ -2,9 +2,26 @@
 
 ## Overview
 
-Bonk Engine is a 2D game runtime library. It provides rendering, physics, input, audio, and cross-platform builds as importable TypeScript modules. Games bring their own architecture.
+Bonk Engine is a 2D game toolkit that sandwiches the game in three layers:
 
-## Module Structure
+```
+┌─────────────────────────────────────────────────────────┐
+│  Layer 3: Bonk Overlay (game-agnostic dev tools)        │
+│  Debug wireframes, performance overlays, state          │
+│  inspection, build targets, hot reload                  │
+├─────────────────────────────────────────────────────────┤
+│  Layer 2: Game Code (Claude-authored, game-specific)    │
+│  Whatever architecture THIS game needs — turn systems,  │
+│  terrain, inventory, AI, state machines, ECS, nothing   │
+├─────────────────────────────────────────────────────────┤
+│  Layer 1: Bonk Runtime (game-agnostic tools)            │
+│  Rendering, physics, input, audio, math, camera, UI     │
+└─────────────────────────────────────────────────────────┘
+```
+
+Layers 1 and 3 are game-agnostic — built once, reused across every game. Layer 2 is where Claude has total creative freedom. This document covers Layers 1 and 3 in detail.
+
+## Layer 1: Module Structure
 
 ```
 @bonk/runtime     Game loop, time, lifecycle
@@ -13,7 +30,6 @@ Bonk Engine is a 2D game runtime library. It provides rendering, physics, input,
 @bonk/input       Keyboard, mouse, touch, gamepad
 @bonk/audio       Howler.js: music, SFX, spatial audio
 @bonk/math        vec2 utilities, common game math
-@bonk/build       Build targets: browser, Tauri, Capacitor
 ```
 
 A game imports what it needs:
@@ -161,6 +177,18 @@ TypeScript Game Code
         ├── npm run build:tauri  → Tauri → native desktop (Steam-ready)
         └── npm run build:mobile → Capacitor → iOS/Android
 ```
+
+## Layer 3: Bonk Overlay
+
+Layer 3 is always optional. It subscribes to Layer 1's lifecycle events (body created, sprite added, collision fired) and renders debug info over whatever the game built. Same overlay works on every Bonk game.
+
+```
+@bonk/devtools    Debug wireframes, physics outlines, state inspector
+@bonk/perf        FPS counter, draw calls, body count, memory
+@bonk/build       Build targets: browser, Tauri (Steam), Capacitor (mobile)
+```
+
+Layer 3 never touches Layer 2. The key contract: Layer 1 emits events, Layer 3 subscribes, Layer 2 doesn't know either is watching. Add one line to `vite.config.ts` to enable. Production builds don't include it.
 
 ## Project Structure
 

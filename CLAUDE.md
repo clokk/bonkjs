@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A 2D game runtime library for AI collaboration. TypeScript-first. Claude writes the game, Bonk provides rendering, physics, input, audio as importable modules.
+A 2D game toolkit for AI collaboration. TypeScript-first. Bonk sandwiches the game — runtime tools below (Layer 1), dev tools above (Layer 3) — so Claude has maximum creative freedom in the middle (Layer 2).
 
 **Core thesis:** The game code IS the scene. No JSON intermediary, no scene hierarchy. Claude decides the architecture per game.
 
@@ -66,7 +66,26 @@ game.start();
 
 No scene format. No component hierarchy. Claude picks the right architecture per game.
 
-## Key Runtime Capabilities
+## Architecture — The Sandwich Model
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  Layer 3: Bonk Overlay (game-agnostic dev tools)        │
+│  Debug wireframes, performance overlays, state          │
+│  inspection, build targets, hot reload                  │
+├─────────────────────────────────────────────────────────┤
+│  Layer 2: Game Code (Claude-authored, game-specific)    │
+│  Whatever architecture THIS game needs — turn systems,  │
+│  terrain, inventory, AI, state machines, ECS, nothing   │
+├─────────────────────────────────────────────────────────┤
+│  Layer 1: Bonk Runtime (game-agnostic tools)            │
+│  Rendering, physics, input, audio, math, camera, UI     │
+└─────────────────────────────────────────────────────────┘
+```
+
+Layer 1 is the set of importable modules listed below. Layer 2 is whatever Claude decides. Layer 3 is the reusable overlay — it subscribes to Layer 1's lifecycle events and renders debug info over whatever the game built. Same overlay works on every Bonk game.
+
+## Key Runtime Capabilities (Layer 1)
 
 ### Rendering
 - Sprites, animated sprites
@@ -100,6 +119,16 @@ No scene format. No component hierarchy. Claude picks the right architecture per
 - Variable timestep rendering
 - Time scaling
 - Coroutine scheduler (generator-based)
+
+## Bonk Overlay (Layer 3)
+
+Layer 3 is always optional. Planned packages:
+
+- `@bonk/devtools` — Debug wireframes, physics outlines, state inspector
+- `@bonk/perf` — FPS counter, draw calls, body count, memory
+- `@bonk/build` — Build targets: browser, Tauri (Steam), Capacitor (mobile)
+
+Layer 3 never touches Layer 2. It subscribes to Layer 1's lifecycle events (body created, sprite added, collision fired) and renders debug info over whatever the game built. Add one line to `vite.config.ts` and debug tools light up. Remove it and nothing changes.
 
 ## Commands
 
