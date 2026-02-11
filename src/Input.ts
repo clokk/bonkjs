@@ -6,6 +6,9 @@
 import type { Vector2, AxisConfig, ButtonConfig, InputConfig } from './types';
 import { Time } from './Time';
 
+/** Active input device mode — keyboard, touch, or gamepad. */
+export type InputMode = 'keyboard' | 'touch' | 'gamepad';
+
 /** Default input configuration */
 const DEFAULT_CONFIG: InputConfig = {
   axes: {
@@ -27,9 +30,40 @@ const DEFAULT_CONFIG: InputConfig = {
 };
 
 export class Input {
+  // ==================== Input Mode ====================
+
+  /** Current input device mode. */
+  private static _inputMode: InputMode = 'keyboard';
+
+  /** Listeners notified when input mode changes. */
+  private static inputModeListeners: Array<(mode: InputMode) => void> = [];
+
+  /** Get the current input mode. */
+  static get inputMode(): InputMode {
+    return this._inputMode;
+  }
+
+  /** Set the active input mode. No-op if already the same mode. Notifies listeners on change. */
+  static setInputMode(mode: InputMode): void {
+    if (this._inputMode === mode) return;
+    this._inputMode = mode;
+    for (const listener of this.inputModeListeners) {
+      listener(mode);
+    }
+  }
+
+  /** Subscribe to input mode changes. Returns an unsubscribe function. */
+  static onInputModeChange(listener: (mode: InputMode) => void): () => void {
+    this.inputModeListeners.push(listener);
+    return () => {
+      const idx = this.inputModeListeners.indexOf(listener);
+      if (idx >= 0) this.inputModeListeners.splice(idx, 1);
+    };
+  }
+
   // ==================== Key State ====================
 
-  /** Keys currently held down */
+  /** Keys currently held down (union of physical + virtual) */
   private static keysHeld: Set<string> = new Set();
 
   /** Keys pressed this frame */
@@ -37,6 +71,26 @@ export class Input {
 
   /** Keys released this frame */
   private static keysUp: Set<string> = new Set();
+
+  /** Physical keyboard keys currently held */
+  private static physicalKeysHeld: Set<string> = new Set();
+
+  /** Virtual (touch) keys currently held */
+  private static virtualKeysHeld: Set<string> = new Set();
+
+  // ==================== Device Detection ====================
+
+  /** Whether the device supports touch input */
+  static readonly hasTouchSupport: boolean =
+    typeof window !== 'undefined' &&
+    ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+
+  /** Whether a physical keyboard has been detected (set on first keydown) */
+  private static _hasKeyboard: boolean = false;
+
+  static get hasKeyboard(): boolean {
+    return this._hasKeyboard;
+  }
 
   // ==================== Mouse State ====================
 
@@ -71,15 +125,22 @@ export class Input {
   // ==================== Event Handlers ====================
 
   private static onKeyDown = (event: KeyboardEvent): void => {
+    Input._hasKeyboard = true;
+    Input.setInputMode('keyboard');
     if (!Input.keysHeld.has(event.code)) {
       Input.keysDown.add(event.code);
     }
     Input.keysHeld.add(event.code);
+    Input.physicalKeysHeld.add(event.code);
   };
 
   private static onKeyUp = (event: KeyboardEvent): void => {
-    Input.keysHeld.delete(event.code);
-    Input.keysUp.add(event.code);
+    Input.physicalKeysHeld.delete(event.code);
+    // Only remove from keysHeld if virtual isn't also holding this key
+    if (!Input.virtualKeysHeld.has(event.code)) {
+      Input.keysHeld.delete(event.code);
+      Input.keysUp.add(event.code);
+    }
   };
 
   private static onMouseDown = (event: MouseEvent): void => {
@@ -177,11 +238,15 @@ export class Input {
     this.keysHeld.clear();
     this.keysDown.clear();
     this.keysUp.clear();
+    this.physicalKeysHeld.clear();
+    this.virtualKeysHeld.clear();
     this.mouseButtonsHeld.clear();
     this.mouseButtonsDown.clear();
     this.mouseButtonsUp.clear();
     this.axisValues.clear();
 
+    this.inputModeListeners.length = 0;
+    this._inputMode = 'keyboard';
     this.canvas = null;
     this.initialized = false;
     console.log('Input system destroyed');
@@ -343,6 +408,50 @@ export class Input {
    */
   static getMouseButtonUp(button: number): boolean {
     return this.mouseButtonsUp.has(button);
+  }
+
+  // ==================== Virtual Key API ====================
+
+  /**
+   * Set a virtual key state (for touch controls, on-screen buttons, etc.).
+   * Virtual keys merge with physical keyboard state — releasing a virtual key
+   * won't drop a physical key that's still held, and vice versa.
+   */
+  static setVirtualKey(code: string, pressed: boolean): void {
+    if (pressed) {
+      Input.virtualKeysHeld.add(code);
+      if (!Input.keysHeld.has(code)) {
+        Input.keysDown.add(code);
+      }
+      Input.keysHeld.add(code);
+    } else {
+      Input.virtualKeysHeld.delete(code);
+      // Only remove from keysHeld if physical keyboard isn't also holding this key
+      if (!Input.physicalKeysHeld.has(code)) {
+        Input.keysHeld.delete(code);
+        Input.keysUp.add(code);
+      }
+    }
+  }
+
+  /**
+   * Release all virtual keys, respecting physical keyboard state.
+   */
+  static clearAllVirtualKeys(): void {
+    for (const code of Input.virtualKeysHeld) {
+      if (!Input.physicalKeysHeld.has(code)) {
+        Input.keysHeld.delete(code);
+        Input.keysUp.add(code);
+      }
+    }
+    Input.virtualKeysHeld.clear();
+  }
+
+  /**
+   * Check if a virtual key is currently held.
+   */
+  static isVirtualKeyHeld(code: string): boolean {
+    return Input.virtualKeysHeld.has(code);
   }
 
   // ==================== Configuration ====================

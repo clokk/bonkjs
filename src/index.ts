@@ -11,8 +11,10 @@ export { Time } from './Time';
 export { Camera, type CameraConfig } from './Camera';
 
 // Input
-export { Input } from './Input';
+export { Input, type InputMode } from './Input';
 export { Keys } from './Keys';
+export { TouchControls, type TouchControlsConfig, type TouchJoystickConfig, type TouchButtonConfig } from './TouchControls';
+export { GamepadControls, GamepadButtons, type GamepadControlsConfig, type GamepadStickConfig, type GamepadButtonMapping } from './GamepadControls';
 
 // Math
 export { vec2 } from './vec2';

@@ -64,12 +64,16 @@ export class Camera {
   /**
    * Set a follow target. Takes a function that returns a position,
    * avoiding coupling to any specific entity type.
+   * First call snaps immediately; subsequent calls just update the target
+   * (smooth follow in update() handles transitions).
    */
   follow(targetFn: () => Vector2): void {
+    const shouldSnap = this.targetFn === null;
     this.targetFn = targetFn;
-    // Snap to target immediately
-    const pos = targetFn();
-    this.currentPosition = [pos[0] + this.offset[0], pos[1] + this.offset[1]];
+    if (shouldSnap) {
+      const pos = targetFn();
+      this.currentPosition = [pos[0] + this.offset[0], pos[1] + this.offset[1]];
+    }
   }
 
   /** Stop following. */
@@ -143,6 +147,14 @@ export class Camera {
   /** Get current camera position. */
   getPosition(): Vector2 {
     return [...this.currentPosition] as Vector2;
+  }
+
+  /** Convert screen/canvas coordinates to world coordinates. */
+  screenToWorld(screenX: number, screenY: number): Vector2 {
+    return [
+      (screenX - this.viewportWidth / 2) / this.zoom + this.currentPosition[0],
+      (screenY - this.viewportHeight / 2) / this.zoom + this.currentPosition[1],
+    ];
   }
 
   private getTargetPosition(): Vector2 {
