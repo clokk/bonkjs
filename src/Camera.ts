@@ -197,9 +197,17 @@ export class Camera {
     const halfW = (this.viewportWidth / 2) / this.zoom;
     const halfH = (this.viewportHeight / 2) / this.zoom;
 
-    return [
-      Math.max(b.minX + halfW, Math.min(b.maxX - halfW, pos[0])),
-      Math.max(b.minY + halfH, Math.min(b.maxY - halfH, pos[1])),
-    ];
+    // When viewport is wider/taller than world bounds, center instead of
+    // pinning to one edge. This happens with adaptive canvas widths where
+    // the visible area exceeds the game world — gutters show on both sides.
+    const clampedX = (b.minX + halfW > b.maxX - halfW)
+      ? (b.minX + b.maxX) / 2
+      : Math.max(b.minX + halfW, Math.min(b.maxX - halfW, pos[0]));
+
+    const clampedY = (b.minY + halfH > b.maxY - halfH)
+      ? (b.minY + b.maxY) / 2
+      : Math.max(b.minY + halfH, Math.min(b.maxY - halfH, pos[1]));
+
+    return [clampedX, clampedY];
   }
 }
