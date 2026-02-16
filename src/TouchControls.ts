@@ -627,6 +627,10 @@ export class TouchControls {
   setJoystick(keys: { up?: string; down?: string; left?: string; right?: string }): void {
     this.releaseAllJoystickKeys();
     this.joystickKeys = { ...keys };
+    // Re-evaluate current touch position with new key mapping
+    if (this.joystickPointerId !== null && this.joystickKnob) {
+      this.updateJoystickFromLocal(this.joystickKnob.position.x, this.joystickKnob.position.y);
+    }
   }
 
   // ==================== Cleanup ====================
