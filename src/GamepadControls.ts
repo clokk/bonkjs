@@ -43,7 +43,15 @@ export interface GamepadControlsConfig {
   buttons?: GamepadButtonMapping[];
   /** D-pad key mappings, or false to disable. Default: same keys as left stick */
   dpad?: { up?: string; down?: string; left?: string; right?: string } | false;
-  /** Gamepad index to use. Default: 0 */
+  /**
+   * Preferred gamepad slot. Default: 0.
+   *
+   * Acts as a preference, not a hard requirement: when a gamepad arrives at
+   * this slot it takes priority, but if no controller is currently latched
+   * the first connected standard-mapped gamepad at any slot is adopted. This
+   * handles browser quirks where bluetooth controllers can land at non-zero
+   * slots (e.g., when a previous wired session left slot 0 in a stale state).
+   */
   gamepadIndex?: number;
   /** Auto-switch input mode when gamepad input detected. Default: true */
   autoSwitchMode?: boolean;
@@ -84,6 +92,9 @@ export class GamepadControls {
 
   private _enabled = false;
   private _connected = false;
+  // Slot we've actually latched onto — may differ from config.gamepadIndex when
+  // the preferred slot is empty but another slot has a standard-mapped controller.
+  private _currentIndex: number | null = null;
   private destroyed = false;
 
   // Event handler refs for cleanup
@@ -139,18 +150,26 @@ export class GamepadControls {
     this._leftStickDeadzone = this.leftStickConfig?.deadzone ?? DEFAULT_DEADZONE;
     this._rightStickDeadzone = this.rightStickConfig?.deadzone ?? DEFAULT_DEADZONE;
 
-    // Connection detection
+    // Connection detection — prefer config.gamepadIndex when it arrives, else
+    // accept any standard-mapped gamepad if we don't already have one latched.
     this.onGamepadConnected = (e: GamepadEvent) => {
-      if (e.gamepad.index === this.config.gamepadIndex && e.gamepad.mapping === 'standard') {
+      if (e.gamepad.mapping !== 'standard') return;
+      if (e.gamepad.index === this.config.gamepadIndex || this._currentIndex === null) {
+        this._currentIndex = e.gamepad.index;
         this._connected = true;
-        console.log(`[GamepadControls] connected: ${e.gamepad.id}`);
+        console.log(`[GamepadControls] connected: ${e.gamepad.id} (slot ${e.gamepad.index})`);
       }
     };
     this.onGamepadDisconnected = (e: GamepadEvent) => {
-      if (e.gamepad.index === this.config.gamepadIndex) {
-        this._connected = false;
-        this.releaseAllKeys();
-        console.log(`[GamepadControls] disconnected: ${e.gamepad.id}`);
+      if (e.gamepad.index !== this._currentIndex) return;
+      console.log(`[GamepadControls] disconnected: ${e.gamepad.id} (slot ${e.gamepad.index})`);
+      this._currentIndex = null;
+      this._connected = false;
+      this.releaseAllKeys();
+      // Another controller may still be present at a different slot — migrate.
+      if (this.adoptAvailableGamepad()) {
+        const gp = navigator.getGamepads()[this._currentIndex!];
+        console.log(`[GamepadControls] adopted: ${gp?.id} (slot ${this._currentIndex})`);
       }
     };
     window.addEventListener('gamepadconnected', this.onGamepadConnected);
@@ -369,13 +388,41 @@ export class GamepadControls {
   // ==================== Connection ====================
 
   private getGamepad(): Gamepad | null {
-    const gamepads = navigator.getGamepads();
-    const gp = gamepads[this.config.gamepadIndex];
-    if (gp && gp.mapping === 'standard' && gp.connected) {
-      this._connected = true;
-      return gp;
+    if (this._currentIndex === null && !this.adoptAvailableGamepad()) return null;
+    const gp = navigator.getGamepads()[this._currentIndex!];
+    if (gp && gp.mapping === 'standard' && gp.connected) return gp;
+    // Latched slot went stale without a disconnect event firing — try another.
+    this._currentIndex = null;
+    this._connected = false;
+    if (this.adoptAvailableGamepad()) {
+      return navigator.getGamepads()[this._currentIndex!];
     }
     return null;
+  }
+
+  /**
+   * Find a connected standard-mapped gamepad and latch onto its slot.
+   * Prefers `config.gamepadIndex` when that slot has a controller; otherwise
+   * scans all slots and adopts the first match. Mutates `_currentIndex` and
+   * `_connected`. Returns true on adoption, false if no gamepad is available.
+   */
+  private adoptAvailableGamepad(): boolean {
+    const gamepads = navigator.getGamepads();
+    const preferred = gamepads[this.config.gamepadIndex];
+    if (preferred && preferred.mapping === 'standard' && preferred.connected) {
+      this._currentIndex = this.config.gamepadIndex;
+      this._connected = true;
+      return true;
+    }
+    for (let i = 0; i < gamepads.length; i++) {
+      const gp = gamepads[i];
+      if (gp && gp.mapping === 'standard' && gp.connected) {
+        this._currentIndex = i;
+        this._connected = true;
+        return true;
+      }
+    }
+    return false;
   }
 
   /** Apply scaled radial deadzone — returns processed {x, y} with smooth 0→1 ramp. */
@@ -387,11 +434,9 @@ export class GamepadControls {
   }
 
   private checkInitialConnection(): void {
-    const gamepads = navigator.getGamepads();
-    const gp = gamepads[this.config.gamepadIndex];
-    if (gp && gp.mapping === 'standard' && gp.connected) {
-      this._connected = true;
-      console.log(`[GamepadControls] already connected: ${gp.id}`);
+    if (this.adoptAvailableGamepad()) {
+      const gp = navigator.getGamepads()[this._currentIndex!];
+      console.log(`[GamepadControls] already connected: ${gp?.id} (slot ${this._currentIndex})`);
     }
   }
 

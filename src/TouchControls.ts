@@ -54,6 +54,10 @@ export interface TouchButtonConfig {
   aimStickDeadzone?: number;
   /** Cancel zone multiplier of radius. Default: 1.5, use 2.5 for aim stick. */
   cancelRadius?: number;
+  /** Label size multiplier. Default: 1.0 */
+  labelScale?: number;
+  /** Label pixel offset from center [x, y]. Default: [0, 0] */
+  labelOffset?: [number, number];
 }
 
 export interface TouchControlsConfig {
@@ -85,6 +89,8 @@ const DEFAULT_BUTTON: Required<Omit<TouchButtonConfig, 'key' | 'label' | 'holdKe
   position: [0.85, 0.7],
   radius: 50,
   color: 0xffffff,
+  labelScale: 1,
+  labelOffset: [0, 0] as [number, number],
 };
 
 // ==================== TouchControls Class ====================
@@ -363,13 +369,16 @@ export class TouchControls {
         text: bcfg.label,
         style: {
           fontFamily: 'monospace',
-          fontSize: Math.round(radius * 0.45),
+          fontSize: Math.round(radius * 0.45 * (bcfg.labelScale ?? 1)),
           fontWeight: 'bold',
           fill: color,
           align: 'center',
         },
       });
       labelText.anchor.set(0.5);
+      const off = bcfg.labelOffset ?? [0, 0];
+      labelText.x = off[0];
+      labelText.y = off[1];
       labelText.alpha = 0.8;
       c.addChild(labelText);
     }

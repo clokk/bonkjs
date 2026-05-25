@@ -65,7 +65,7 @@ Only gamepads with `mapping === 'standard'` are accepted (Xbox, PlayStation, Swi
 | `rightStick` | `GamepadStickConfig \| false` | disabled | Right stick config |
 | `buttons` | `GamepadButtonMapping[]` | `[]` | Button-to-key mappings |
 | `dpad` | `{ up?, down?, left?, right? } \| false` | same as leftStick | D-pad key mappings |
-| `gamepadIndex` | `number` | `0` | Which gamepad to use |
+| `gamepadIndex` | `number` | `0` | Preferred gamepad slot. Acts as a hint: the configured slot wins if present, but any standard-mapped gamepad at any slot is adopted when this slot is empty. Handles bluetooth controllers landing at non-zero slots. |
 | `autoSwitchMode` | `boolean` | `true` | Auto-switch `Input.inputMode` on gamepad input |
 
 ### `GamepadStickConfig`
