@@ -19,5 +19,8 @@ export { GamepadControls, GamepadButtons, type GamepadControlsConfig, type Gamep
 // Math
 export { vec2 } from './vec2';
 
+// Splash — BonkJS crash-in logo animation for page load
+export { BonkSplash, type BonkSplashOptions } from './BonkSplash';
+
 // Dev Tools
 export { Tweaker, type TweakerConfig, type RegisterOptions, type FieldHint, type TweakerTheme } from './devtools';

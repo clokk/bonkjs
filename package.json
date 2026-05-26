@@ -1,7 +1,7 @@
 {
   "name": "bonkjs",
-  "version": "0.4.4",
-  "description": "PixiJS game toolkit — game loop, input, camera, vec2, devtools",
+  "version": "0.5.0",
+  "description": "PixiJS game toolkit — game loop, input, camera, vec2, splash, devtools",
   "type": "module",
   "main": "./dist/bonkjs.js",
   "module": "./dist/bonkjs.js",
