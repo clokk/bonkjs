@@ -105,6 +105,24 @@ if (Input.getMouseButton(0)) { ... }         // held
 if (Input.getMouseButtonDown(2)) { ... }     // right-click this frame
 ```
 
+## Debugging Held Keys
+
+Sometimes you need to ask "what's held *right now*?" without knowing the codes in advance — e.g. tracking down a stuck virtual key, a phantom press, or a binding that fires unexpectedly. These return **sorted snapshots** (new arrays, safe to log or keep):
+
+```typescript
+import { Input } from 'bonkjs';
+
+Input.heldKeys();          // union of everything held
+Input.heldPhysicalKeys();  // physical keyboard only
+Input.heldVirtualKeys();   // virtual injections only (gamepad/touch via setVirtualKey)
+```
+
+The split matters for diagnosis: a code in `heldPhysicalKeys()` is a real keypress, while a code in `heldVirtualKeys()` with no controller/touch active is a **stuck `setVirtualKey` injection**. Example one-liner probe:
+
+```typescript
+console.log('held →', { phys: Input.heldPhysicalKeys(), virt: Input.heldVirtualKeys() });
+```
+
 ## Using Input in Game Code
 
 All input methods are static on the `Input` class. Your game uses them however it wants — bonkjs doesn't impose any entity or component system:

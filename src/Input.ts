@@ -454,6 +454,31 @@ export class Input {
     return Input.virtualKeysHeld.has(code);
   }
 
+  // ==================== Debug / Introspection ====================
+
+  /**
+   * Snapshot of every key currently held — the union of physical keyboard keys and
+   * virtual keys (gamepad/touch injections via {@link setVirtualKey}). Returns a new
+   * sorted array (safe to keep or log; not a live reference).
+   *
+   * Read-only debugging aid: answers "what's held right now?" without having to know
+   * the codes in advance — e.g. catching a stuck virtual key or a stray physical
+   * press. Use {@link heldPhysicalKeys} / {@link heldVirtualKeys} for source attribution.
+   */
+  static heldKeys(): string[] {
+    return [...this.keysHeld].sort();
+  }
+
+  /** Snapshot of physical keyboard keys currently held (excludes virtual injections). */
+  static heldPhysicalKeys(): string[] {
+    return [...this.physicalKeysHeld].sort();
+  }
+
+  /** Snapshot of virtual keys currently held — gamepad/touch injections via {@link setVirtualKey}. */
+  static heldVirtualKeys(): string[] {
+    return [...this.virtualKeysHeld].sort();
+  }
+
   // ==================== Configuration ====================
 
   /**
