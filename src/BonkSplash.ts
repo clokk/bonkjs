@@ -83,10 +83,9 @@ const SPLASH = {
   IMPACT_SHOCKWAVE_SPEED: 350,
   IMPACT_SHOCKWAVE_LIFE: 0.22,
 
-  // Shake/flash per letter
+  // Shake per letter (no per-letter screen flash — only the final burst flashes)
   LETTER_SHAKE: 10,
   LETTER_SHAKE_DECAY: 0.72,
-  LETTER_FLASH_ALPHA: 0.12,
 
   // Speed lines (anticipation)
   SPEED_LINE_COUNT: 14,
@@ -586,8 +585,10 @@ export class BonkSplash {
     const x = letter.text.x;
     const y = letter.targetY;
 
+    // Per-letter impact: shake + debris + shockwaves only. (No full-screen flash —
+    // it read as distracting background strobing across the rapid "BONK" slams.
+    // The one climactic flash on the final burst is kept.)
     this.shake(SPLASH.LETTER_SHAKE, SPLASH.LETTER_SHAKE_DECAY);
-    this.triggerFlash(SPLASH.ACCENT, SPLASH.LETTER_FLASH_ALPHA);
 
     for (let i = 0; i < SPLASH.IMPACT_DEBRIS_COUNT; i++) {
       const angle = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 1.5;

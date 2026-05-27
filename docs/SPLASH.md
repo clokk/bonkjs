@@ -19,36 +19,69 @@ import { Game, Time, BonkSplash } from 'bonkjs';
 const game = new Game();
 const { ui } = await game.init({ width: 1920, height: 1080, backgroundColor: 0x07070d });
 
-// Create it on the UI layer, last so it sits on top.
+// Create it on the UI layer, last so it sits on top. Its solid backdrop covers the
+// screen from construction, so the menu behind it stays hidden until the fade.
 const splash = new BonkSplash(ui, { width: 1920, height: 1080, bgColor: 0x07070d });
 
 let splashActive = true;
 
-// Letter metrics need the font — load it, then build + start.
-await document.fonts.load("140px 'Black Ops One'").catch(() => {});
-splash.buildLetters();
-splash.start(() => {
-  splash.destroy();
-  splashActive = false;
-});
-
-// Drive it with real frame dt (seconds) each render frame:
+// Drive it with real frame dt (seconds) each render frame.
 game.onUpdate(() => {
   if (splashActive) splash.update(Time.unscaledDeltaTime);
   // ...your render...
 });
 
+// Start the loop NOW — never block game.start() on the font load (a stalled webfont
+// would leave the whole game un-startable). Build the letters once the font is ready,
+// racing a timeout so a hung fetch can't delay the splash (letters just use fallback
+// metrics if it times out).
 game.start();
+
+await Promise.race([
+  document.fonts.load("140px 'Black Ops One'"),
+  new Promise((resolve) => setTimeout(resolve, 1500)),
+]).catch(() => {});
+splash.buildLetters();
+splash.start(() => {
+  splash.destroy();
+  splashActive = false;
+});
 ```
 
-While `splashActive`, gate any menu/confirm input so a click behind the splash
-can't act on the screen it's covering.
+See **Integrating without breaking input** below before you wire `splashActive` into
+your game's input handling — there's one trap that will make the game feel frozen.
+
+## Integrating without breaking input
+
+The splash is **purely visual** — it does not capture input. While it plays, button
+presses still reach the game underneath, and you'll want to ignore them (a press
+behind the splash shouldn't act on the menu it's covering). Do that **without
+freezing your per-frame state/input tick**:
+
+- ❌ **Don't skip your state-machine tick while `isActive()`.** If you stop ticking,
+  your edge-detect buffers (e.g. "was confirm held last frame?") go stale. The frame
+  the splash ends, a still-held button (natural — players hold a button to skip a
+  splash) reads as a *fresh* press and ghost-fires — instantly starting the run /
+  dismissing the menu, or making the menu feel dead. This is the #1 integration trap.
+- ✅ **Keep ticking every frame** so edge buffers stay current, and gate only the
+  *actions*:
+
+```ts
+// in your fixed/update tick — runs every frame, splash or not:
+const inputLocked = splashActive;
+tickMenu(inputLocked);   // always reads + updates input edge buffers;
+                         // only navigates / confirms when !inputLocked
+```
+
+When the splash ends, buffers are already current, so a held button correctly reads
+as "still held" (no fresh edge) — the player releases and re-presses to act.
 
 ## Font
 
-The logo uses **Black Ops One** (falls back to `Impact`). Load it in your page and
-`await document.fonts.load(...)` *before* `buildLetters()` so the text metrics are
-correct. With Google Fonts:
+The logo uses **Black Ops One** (falls back to `Impact`). Load it in your page (e.g.
+the Google Fonts `<link>` below). Build the letters once it's ready so the text
+metrics are correct — but **never block your game loop on the font**; race a timeout
+(see Usage) so a stalled fetch can't leave the game un-startable.
 
 ```html
 <link rel="preconnect" href="https://fonts.googleapis.com">
