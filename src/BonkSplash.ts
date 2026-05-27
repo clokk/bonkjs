@@ -325,6 +325,12 @@ export class BonkSplash {
       case 'fade': this.updateFade(); break;
     }
 
+    // The fade phase fires onComplete, which may call destroy() synchronously
+    // (tearing down the containers). Bail before the per-frame tail so it can't touch
+    // destroyed objects (shakeGroup/flashOverlay) and throw — which would kill the
+    // host's animation loop.
+    if (this.destroyed) return;
+
     this.updateParticles(dt);
     this.updateShockwaves(dt);
     this.updateSpeedLines(dt);
@@ -647,7 +653,6 @@ export class BonkSplash {
     const x = this.cx;
     const y = this.logoY;
     this.shake(SPLASH.BURST_SHAKE, SPLASH.BURST_SHAKE_DECAY);
-    this.triggerFlash(SPLASH.ACCENT, SPLASH.BURST_FLASH_ALPHA);
 
     for (let wave = 0; wave < 3; wave++) {
       setTimeout(() => this.spawnBurstWave(x, y, wave), wave * 30);
@@ -700,10 +705,6 @@ export class BonkSplash {
   private updateSettle(): void {
     for (const letter of this.letters) {
       letter.text.position.y = letter.targetY + Math.sin(this.elapsed * 2.5 + letter.text.x * 0.008) * 2;
-    }
-    if (this.phaseTimer >= SPLASH.SETTLE_DURATION * 0.6 && !this.endFlashFired) {
-      this.endFlashFired = true;
-      this.triggerFlash(SPLASH.ACCENT_GLOW, 0.06);
     }
     if (this.phaseTimer >= SPLASH.SETTLE_DURATION) { this.phase = 'hold'; this.phaseTimer = 0; }
   }
