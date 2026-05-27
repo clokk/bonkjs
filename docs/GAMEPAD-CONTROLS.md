@@ -103,6 +103,21 @@ gamepad.leftStickValue;   // { x: 0.7, y: -0.3 }
 gamepad.rightStickValue;  // { x: 0, y: 0.9 }
 ```
 
+## Button State Queries
+
+`isPressed(button)` reads the live pressed state of any standard gamepad button. Use it when the auto-injected `buttons` mapping isn't enough — e.g., combo detection (LB+RB super), analog-shoulder thresholds, or any custom button logic. No need to call `update()` first; reads `navigator.getGamepads()` directly on the currently-latched slot. Returns `false` if no gamepad is latched.
+
+```typescript
+import { GamepadButtons } from 'bonkjs';
+
+// In your update loop:
+const lbHeld = controls.isPressed(GamepadButtons.LB);
+const rbHeld = controls.isPressed(GamepadButtons.RB);
+if (lbHeld && rbHeld) {
+  // both shoulder buttons currently pressed
+}
+```
+
 Use these for direct analog aim, camera control, or any non-digital input. Updated during `update()`. Digital injection and analog values work independently — you can disable digital injection for a stick (`rightStick: false`) and still read analog values from it.
 
 ### Example: Direct Aim

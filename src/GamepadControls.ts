@@ -457,6 +457,22 @@ export class GamepadControls {
     return this._rightStickValue;
   }
 
+  // ==================== Button State Queries ====================
+
+  /**
+   * Whether the standard gamepad button at this index is currently pressed.
+   * Reads live from `navigator.getGamepads()` on the latched slot — no need to
+   * call `update()` first. Returns false if no gamepad is currently latched.
+   *
+   * General-purpose API for combo detection (e.g., LB+RB super), analog-shoulder
+   * thresholding, or any case where the buttonMappings auto-injection isn't enough.
+   */
+  isPressed(button: number): boolean {
+    if (this._currentIndex === null) return false;
+    const gp = navigator.getGamepads()[this._currentIndex];
+    return gp?.buttons[button]?.pressed ?? false;
+  }
+
   // ==================== Visibility ====================
 
   /** Enable gamepad polling (e.g. entering gameplay). */
