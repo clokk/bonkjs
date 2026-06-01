@@ -21,7 +21,12 @@ export interface GameInitConfig {
 export interface GameInitResult {
   canvas: HTMLCanvasElement;
   app: Application;
+  /** World-space container (camera-followed). `sortableChildren` is ENABLED, so children layer by
+   *  their `.zIndex` — NOT by add order. Default zIndex is 0; ties break by insertion order. Set a
+   *  child's `.zIndex` to control its draw order (e.g. shadow 9 < player 10 < reticle 11). */
   world: Container;
+  /** Screen-space UI container (above `world`, not camera-followed). `sortableChildren` is ENABLED —
+   *  children layer by `.zIndex` (see `world`). */
   ui: Container;
 }
 
@@ -58,6 +63,8 @@ export class Game {
 
     const canvas = app.canvas as HTMLCanvasElement;
 
+    // Both containers sort by child `.zIndex` (not add order) — see GameInitResult docs. Consumers
+    // set per-object zIndex to layer (shadow < body < weapon < reticle < HUD, etc.).
     const world = new Container();
     world.sortableChildren = true;
     app.stage.addChild(world);

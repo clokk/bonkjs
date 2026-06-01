@@ -81,8 +81,10 @@ const { canvas, app, world, ui } = await game.init({
 
 - `canvas` — The `<canvas>` element to append to the DOM
 - `app` — The raw PixiJS `Application` instance
-- `world` — A PixiJS `Container` (sortableChildren enabled) for game-world objects. Camera operates on this.
-- `ui` — A PixiJS `Container` (sortableChildren enabled) for screen-space UI. Not affected by camera.
+- `world` — A PixiJS `Container` for game-world objects (the camera operates on this).
+- `ui` — A PixiJS `Container` for screen-space UI. Not affected by camera.
+
+> **Layering:** both containers have `sortableChildren` enabled, so children draw by their **`.zIndex`**, *not* add order. Default `zIndex` is `0`; ties break by insertion order. Set a child's `.zIndex` to place it (e.g. `shadow 9 < player 10 < weapon 10.5 < reticle 11`). Adding a child later does **not** put it on top unless its `zIndex` is higher.
 
 ## Camera
 
