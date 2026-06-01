@@ -94,7 +94,7 @@ export class Input {
 
   // ==================== Mouse State ====================
 
-  /** Mouse buttons currently held (0=left, 1=middle, 2=right) */
+  /** Mouse buttons currently held (0=left, 1=middle, 2=right, 3=back, 4=forward) */
   private static mouseButtonsHeld: Set<number> = new Set();
 
   /** Mouse buttons pressed this frame */
@@ -144,6 +144,10 @@ export class Input {
   };
 
   private static onMouseDown = (event: MouseEvent): void => {
+    // Buttons 3 (back) / 4 (forward) trigger browser history navigation by default —
+    // suppress it so the side/thumb buttons can be used as game inputs without the page
+    // navigating away mid-input. (Left/middle/right are left untouched.)
+    if (event.button === 3 || event.button === 4) event.preventDefault();
     if (!Input.mouseButtonsHeld.has(event.button)) {
       Input.mouseButtonsDown.add(event.button);
     }
@@ -151,6 +155,7 @@ export class Input {
   };
 
   private static onMouseUp = (event: MouseEvent): void => {
+    if (event.button === 3 || event.button === 4) event.preventDefault();
     Input.mouseButtonsHeld.delete(event.button);
     Input.mouseButtonsUp.add(event.button);
   };
@@ -390,7 +395,8 @@ export class Input {
 
   /**
    * Check if a mouse button is currently held.
-   * @param button 0=left, 1=middle, 2=right
+   * @param button 0=left, 1=middle, 2=right, 3=back, 4=forward (back/forward have their
+   *   default browser navigation suppressed so they're usable as game inputs)
    */
   static getMouseButton(button: number): boolean {
     return this.mouseButtonsHeld.has(button);

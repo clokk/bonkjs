@@ -100,10 +100,16 @@ import { Input } from 'bonkjs';
 // Position relative to canvas
 const [mx, my] = Input.mousePosition;
 
-// Mouse buttons: 0=left, 1=middle, 2=right
+// Mouse buttons: 0=left, 1=middle, 2=right, 3=back, 4=forward
 if (Input.getMouseButton(0)) { ... }         // held
 if (Input.getMouseButtonDown(2)) { ... }     // right-click this frame
+if (Input.getMouseButton(3)) { ... }         // back/thumb button held (MB4)
 ```
+
+The **back (3) / forward (4) thumb buttons** have their default browser history
+navigation suppressed, so they're usable as game inputs without the page navigating
+away mid-press. Bind them like any other button (e.g. `'Mouse3'` / `'Mouse4'` codes in
+axis/button configs, or read directly via `getMouseButton(3 | 4)`).
 
 ## Debugging Held Keys
 
