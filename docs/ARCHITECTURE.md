@@ -34,6 +34,7 @@ import { Game, Camera, Time, Input, Keys, vec2, Tweaker } from 'bonkjs';
 | Input | `Input.ts` | Time | Keyboard, mouse, axes, buttons |
 | Keys | `Keys.ts` | none | Typed KeyboardEvent.code constants |
 | vec2 | `vec2.ts` | none | Functional vector math |
+| Rng | `Rng.ts` | none | Seedable PRNG (mulberry32) — see [RNG.md](./RNG.md) |
 | Tweaker | `devtools/` | none | Runtime constant editor |
 
 ## Game Loop
@@ -163,6 +164,7 @@ bonkjs/
 │   ├── Input.ts       # Keyboard, mouse, axes, buttons
 │   ├── Keys.ts        # Typed KeyboardEvent.code constants
 │   ├── vec2.ts        # Functional vector math
+│   ├── Rng.ts         # Seedable PRNG (mulberry32) — reproducible procedural gen
 │   ├── types.ts       # Vector2, Color, input config types
 │   ├── index.ts       # Barrel export
 │   └── devtools/      # Tweaker runtime constant editor

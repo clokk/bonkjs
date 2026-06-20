@@ -18,6 +18,7 @@ export { GamepadControls, GamepadButtons, type GamepadControlsConfig, type Gamep
 
 // Math
 export { vec2 } from './vec2';
+export { Rng } from './Rng';
 
 // Particles — pooled 2D particle system (NORMAL + ADD blend channels)
 export { Particles, type Particle, type ParticleBlend, type ParticleShape, type ParticlesConfig } from './Particles';
