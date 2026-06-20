@@ -76,6 +76,7 @@ const { canvas, app, world, ui } = await game.init({
   height: 1080,
   backgroundColor: 0x0a0a15,
   preference: 'webgl',
+  scaleMode: 'fit',        // letterbox-contain to the window, render at native pixels
 });
 ```
 
@@ -85,6 +86,30 @@ const { canvas, app, world, ui } = await game.init({
 - `ui` — A PixiJS `Container` for screen-space UI. Not affected by camera.
 
 > **Layering:** both containers have `sortableChildren` enabled, so children draw by their **`.zIndex`**, *not* add order. Default `zIndex` is `0`; ties break by insertion order. Set a child's `.zIndex` to place it (e.g. `shadow 9 < player 10 < weapon 10.5 < reticle 11`). Adding a child later does **not** put it on top unless its `zIndex` is higher.
+
+#### Resolution / `scaleMode`
+
+`width`/`height` are the **logical (design)** coordinate space — the units the stage, camera, and UI math
+work in. How that space maps onto the physical display is controlled by `scaleMode`:
+
+- **`'fixed'`** (default) — the canvas is created once at `width × height × resolution` and never resized.
+  The host page handles any CSS scaling (e.g. `object-fit: contain`). Pre-0.5.5 behavior.
+- **`'fit'`** — keeps the design size as a **constant** logical space (so a fixed-FOV game's camera and every
+  hardcoded UI anchor stay valid), but letterbox-**contains** the canvas into `resizeTo` (default `window`)
+  and sets the renderer **resolution** to the display's true physical pixel density. Result: crisp on a 4K
+  monitor (`devicePixelRatio === 1` no longer caps the backing store), native-sharp on a Steam Deck (16:10
+  letterboxes against the page background), and re-fits automatically on window resize **and**
+  `devicePixelRatio` change (monitor swap / OS zoom). Optional `maxResolution` caps the backing-store density
+  for perf on very large HiDPI displays.
+
+```typescript
+game.onResize(({ cssWidth, cssHeight, resolution }) => {
+  // Fires after every 'fit' pass — e.g. keep a manual device-pixel snap in sync with `resolution`.
+});
+```
+
+`'fit'` sets `autoDensity` off and manages the canvas's CSS `width`/`height` itself, so pointer mapping that
+normalizes through `canvas.getBoundingClientRect()` stays correct (the element box equals the rendered area).
 
 ## Camera
 

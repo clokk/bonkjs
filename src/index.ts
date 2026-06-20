@@ -6,7 +6,7 @@
 export type { Vector2, Vector3, Color, HexColor, ColorValue, AxisConfig, ButtonConfig, InputConfig } from './types';
 
 // Core
-export { Game, type GameInitConfig, type GameInitResult } from './Game';
+export { Game, type GameInitConfig, type GameInitResult, type ResizeInfo } from './Game';
 export { Time } from './Time';
 export { Camera, type CameraConfig } from './Camera';
 

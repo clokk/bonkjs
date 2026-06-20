@@ -96,9 +96,11 @@ Games access raw PixiJS objects (Application, Container, Renderer) directly. No 
 
 ## PixiJS Gotchas
 
-### autoDensity Is Required
+### autoDensity (default `scaleMode: 'fixed'`)
 
-`Game.init()` passes `autoDensity: true` and `resolution: window.devicePixelRatio` to PixiJS. **Do not remove these.** Without `autoDensity`, PixiJS sets the canvas CSS dimensions to `width * devicePixelRatio` (e.g., 3840x2160 on Retina instead of 1920x1080). Game-side viewport scaling assumes the canvas CSS size matches the logical size — wrong CSS dimensions cause a blank/black screen.
+`Game.init()` passes `autoDensity: true` and `resolution: window.devicePixelRatio` to PixiJS **in the default `scaleMode: 'fixed'`**. Do not remove these there. Without `autoDensity`, PixiJS sets the canvas CSS dimensions to `width * devicePixelRatio` (e.g., 3840x2160 on Retina instead of 1920x1080). Game-side viewport scaling assumes the canvas CSS size matches the logical size — wrong CSS dimensions cause a blank/black screen.
+
+**Exception — `scaleMode: 'fit'`** (v0.5.5+): this mode intentionally sets `autoDensity: false` and **owns the canvas CSS box itself** (`applyFit` writes `canvas.style.width/height` to the letterbox-contained size and sets `renderer.resolution` to the physical pixel density). That's the supported way to render at native resolution across displays (Steam Deck → 4K) — it does NOT cause the blank-screen issue above, because bonkjs sets the correct CSS size rather than leaving Pixi to. See ARCHITECTURE.md → "Resolution / `scaleMode`".
 
 ## Commands
 

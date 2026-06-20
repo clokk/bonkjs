@@ -20,6 +20,8 @@ const { canvas, app, world, ui } = await game.init({
   width: 1280,
   height: 720,
   backgroundColor: 0x1a1a2e,
+  // scaleMode: 'fit',  // letterbox-contain to the window + render at native pixels (crisp 4K → Steam Deck).
+  //                    // Keeps width/height as a constant logical space; see docs/ARCHITECTURE.md.
 });
 document.getElementById('app')!.appendChild(canvas);
 
