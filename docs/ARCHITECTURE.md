@@ -30,6 +30,7 @@ import { Game, Camera, Time, Input, Keys, vec2, Tweaker } from 'bonkjs';
 | Game | `Game.ts` | Time, Input, pixi.js | PixiJS bootstrap + game loop |
 | Time | `Time.ts` | none | Delta time, elapsed time, time scaling |
 | Camera | `Camera.ts` | Time, pixi.js | 2D camera on a PixiJS Container |
+| Particles | `Particles.ts` | pixi.js | Pooled 2D particles (NORMAL + ADD channels) — see [PARTICLES.md](./PARTICLES.md) |
 | Input | `Input.ts` | Time | Keyboard, mouse, axes, buttons |
 | Keys | `Keys.ts` | none | Typed KeyboardEvent.code constants |
 | vec2 | `vec2.ts` | none | Functional vector math |
@@ -158,6 +159,7 @@ bonkjs/
 │   ├── Game.ts        # PixiJS bootstrap + fixed/variable timestep loop
 │   ├── Time.ts        # Delta time, elapsed time, time scaling
 │   ├── Camera.ts      # 2D camera (operates on PixiJS Container)
+│   ├── Particles.ts   # Pooled 2D particle system (NORMAL + ADD blend channels)
 │   ├── Input.ts       # Keyboard, mouse, axes, buttons
 │   ├── Keys.ts        # Typed KeyboardEvent.code constants
 │   ├── vec2.ts        # Functional vector math

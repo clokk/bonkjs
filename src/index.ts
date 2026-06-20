@@ -19,6 +19,9 @@ export { GamepadControls, GamepadButtons, type GamepadControlsConfig, type Gamep
 // Math
 export { vec2 } from './vec2';
 
+// Particles — pooled 2D particle system (NORMAL + ADD blend channels)
+export { Particles, type Particle, type ParticleBlend, type ParticleShape, type ParticlesConfig } from './Particles';
+
 // Splash — BonkJS crash-in logo animation for page load
 export { BonkSplash, type BonkSplashOptions } from './BonkSplash';
 
