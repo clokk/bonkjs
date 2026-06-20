@@ -20,6 +20,9 @@ export interface CameraConfig {
   bounds?: { minX: number; minY: number; maxX: number; maxY: number };
   /** Deadzone - area target can move without camera moving */
   deadzone?: { width: number; height: number };
+  /** Snap the final container position to whole PHYSICAL pixels (kills sub-pixel shimmer of static geometry
+   *  under camera shake). Uses {@link Camera.resolution} as the device-pixel density. Default off. */
+  pixelSnap?: boolean;
 }
 
 export class Camera {
@@ -38,7 +41,12 @@ export class Camera {
   /** Deadzone */
   deadzone?: { width: number; height: number };
 
+  /** Device-pixel density used by {@link CameraConfig.pixelSnap} (1 = CSS pixels). Set this to the renderer's
+   *  resolution when it varies (e.g. bonkjs `scaleMode: 'fit'` — feed it from `game.onResize`). */
+  resolution = 1;
+
   private container: Container;
+  private pixelSnap: boolean;
   private viewportWidth: number;
   private viewportHeight: number;
   private targetFn: (() => Vector2) | null = null;
@@ -59,6 +67,7 @@ export class Camera {
     this.offset = config.offset ? [...config.offset] : [0, 0];
     if (config.bounds) this.bounds = { ...config.bounds };
     if (config.deadzone) this.deadzone = { ...config.deadzone };
+    this.pixelSnap = config.pixelSnap ?? false;
   }
 
   /**
@@ -94,54 +103,74 @@ export class Camera {
     this.shakeIntensity = 0;
   }
 
-  /** Update camera (call in lateUpdate). */
+  /**
+   * Combined sim+render step (call once per frame, e.g. in lateUpdate). Smooths with `Time.deltaTime` and
+   * writes the container. Back-compatible with pre-0.5.6 usage. For the refresh-rate-independent split (smooth
+   * at a fixed sim rate, write + pixel-snap at render rate), use {@link Camera.tick} + {@link Camera.apply}.
+   */
   update(): void {
-    let targetPos = this.getTargetPosition();
+    this.computeFollow(Time.deltaTime);
+    this.apply();
+  }
 
-    if (this.deadzone) {
-      targetPos = this.applyDeadzone(targetPos);
-    }
+  /** Sim-rate follow compute (call in fixedUpdate). Advances the smoothed follow position deterministically at
+   *  `Time.fixedDeltaTime` and decays shake; does NOT write the container. Pair with {@link Camera.apply}. */
+  tick(): void {
+    this.computeFollow(Time.fixedDeltaTime);
+  }
 
-    this.currentPosition = this.smoothFollow(targetPos);
-
-    if (this.bounds) {
-      this.currentPosition = this.clampToBounds(this.currentPosition);
-    }
-
-    // Apply shake offset (does NOT modify currentPosition — follow stays smooth)
-    let renderX = this.currentPosition[0];
-    let renderY = this.currentPosition[1];
-
+  /** Render-rate transform write (call in update/lateUpdate). Composes shake — the internal {@link Camera.shake}
+   *  jitter plus the optional external `offsetX/offsetY` (screen-space, e.g. a game-owned shake module) — and
+   *  writes the container transform, pixel-snapped when `pixelSnap` is enabled. */
+  apply(offsetX = 0, offsetY = 0): void {
+    let sx = offsetX;
+    let sy = offsetY;
     if (this.shakeIntensity > 0.5) {
-      renderX += (Math.random() * 2 - 1) * this.shakeIntensity;
-      renderY += (Math.random() * 2 - 1) * this.shakeIntensity;
-
-      this.shakeIntensity *= Math.pow(this.shakeDecay, Time.deltaTime * 60);
-
-      if (this.shakeDuration > 0) {
-        this.shakeElapsed += Time.deltaTime;
-        if (this.shakeElapsed >= this.shakeDuration) {
-          this.shakeIntensity = 0;
-        }
-      }
+      sx += (Math.random() * 2 - 1) * this.shakeIntensity;
+      sy += (Math.random() * 2 - 1) * this.shakeIntensity;
     }
-
-    // Apply transform directly to PixiJS container
-    this.container.scale.set(this.zoom, this.zoom);
-    this.container.position.set(
-      this.viewportWidth / 2 - renderX * this.zoom,
-      this.viewportHeight / 2 - renderY * this.zoom,
+    this.writeTransform(
+      this.viewportWidth / 2 - this.currentPosition[0] * this.zoom + sx,
+      this.viewportHeight / 2 - this.currentPosition[1] * this.zoom + sy,
     );
   }
 
-  /** Instantly move camera to position (no smoothing). */
+  /** Instantly move camera to position (no smoothing); clamps to bounds and writes the container. */
   snapTo(x: number, y: number): void {
     this.currentPosition = [x, y];
-    this.container.scale.set(this.zoom, this.zoom);
-    this.container.position.set(
-      this.viewportWidth / 2 - x * this.zoom,
-      this.viewportHeight / 2 - y * this.zoom,
+    if (this.bounds) this.currentPosition = this.clampToBounds(this.currentPosition);
+    this.writeTransform(
+      this.viewportWidth / 2 - this.currentPosition[0] * this.zoom,
+      this.viewportHeight / 2 - this.currentPosition[1] * this.zoom,
     );
+  }
+
+  /** Shared follow math for {@link Camera.tick} (fixed dt) and {@link Camera.update} (frame dt). */
+  private computeFollow(dt: number): void {
+    let targetPos = this.getTargetPosition();
+    if (this.deadzone) targetPos = this.applyDeadzone(targetPos);
+    this.currentPosition = this.smoothFollow(targetPos, dt);
+    if (this.bounds) this.currentPosition = this.clampToBounds(this.currentPosition);
+
+    // Decay shake at the same rate the position advances (does NOT move currentPosition — follow stays smooth;
+    // the random jitter is applied in apply()).
+    if (this.shakeIntensity > 0.5) {
+      this.shakeIntensity *= Math.pow(this.shakeDecay, dt * 60);
+      if (this.shakeDuration > 0) {
+        this.shakeElapsed += dt;
+        if (this.shakeElapsed >= this.shakeDuration) this.shakeIntensity = 0;
+      }
+    }
+  }
+
+  /** Write the (optionally pixel-snapped) screen position to the container. */
+  private writeTransform(px: number, py: number): void {
+    if (this.pixelSnap && this.resolution > 0) {
+      px = Math.round(px * this.resolution) / this.resolution;
+      py = Math.round(py * this.resolution) / this.resolution;
+    }
+    this.container.scale.set(this.zoom, this.zoom);
+    this.container.position.set(px, py);
   }
 
   /** Get current camera position. */
@@ -165,8 +194,8 @@ export class Camera {
     return [...this.currentPosition] as Vector2;
   }
 
-  private smoothFollow(target: Vector2): Vector2 {
-    const t = Math.min(1, this.followSmoothing * Time.deltaTime);
+  private smoothFollow(target: Vector2, dt: number): Vector2 {
+    const t = Math.min(1, this.followSmoothing * dt);
     return [
       this.currentPosition[0] + (target[0] - this.currentPosition[0]) * t,
       this.currentPosition[1] + (target[1] - this.currentPosition[1]) * t,

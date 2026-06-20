@@ -27,6 +27,8 @@ The first argument is the PixiJS Container the camera controls (typically the `w
 | `offset` | `[x, y]` | `[0, 0]` | Offset from target |
 | `bounds` | `object` | - | World bounds to constrain camera |
 | `deadzone` | `object` | - | Area target can move without camera moving |
+| `pixelSnap` | `boolean` | `false` | Snap the final container position to whole physical pixels (kills shimmer under shake) |
+| `resolution` | `number` | `1` | Device-pixel density for `pixelSnap` (feed the renderer resolution; see below) |
 
 ## Following a Target
 
@@ -51,6 +53,42 @@ game.onLateUpdate(() => {
 ```
 
 Higher `followSmoothing` = tighter follow. Use lower values (3-5) for a looser, more cinematic feel. Use higher values (8-12) for responsive action games.
+
+## Refresh-Rate-Independent Split: `tick()` + `apply()` (v0.5.6+)
+
+`update()` does the follow math AND writes the container in one call, smoothing with `Time.deltaTime` — fine for
+simple games, but it means the smoothing speed is coupled to the render frame. For a game that follows bonkjs's
+**fixed sim / variable render** model, split it:
+
+```typescript
+game.onFixedUpdate(() => {
+  camera.tick();              // smooth at the fixed 60Hz sim rate (Time.fixedDeltaTime) — deterministic
+});
+game.onUpdate(() => {
+  camera.apply(shakeX, shakeY);  // write the container at native refresh; optional screen-space shake offset
+});
+```
+
+- **`tick()`** advances the smoothed follow position (deadzone → smooth → bounds) at `Time.fixedDeltaTime` and
+  decays internal shake. It does NOT touch the container. Because it runs at a fixed rate, follow speed is
+  identical on a 60Hz and a 240Hz display (with `update()` it is not).
+- **`apply(offsetX?, offsetY?)`** writes the container transform at render rate, composing the internal
+  `shake()` jitter plus an optional external screen-space offset (e.g. a game-owned shake module).
+
+To reproduce a fixed-factor lerp (`pos += (target - pos) * k` per sim tick), set `followSmoothing = k * 60`.
+
+### Pixel snap
+
+Set `pixelSnap: true` to round the final container position to whole **physical** pixels — this stops thin
+static geometry (grid lines, borders) from shimmering under the sub-pixel jitter of camera shake. It uses
+`camera.resolution` as the device-pixel density; when the renderer resolution varies (e.g. `scaleMode: 'fit'`),
+feed it the live value:
+
+```typescript
+const camera = new Camera(world, { viewport: { width: 1920, height: 1080 }, pixelSnap: true });
+camera.resolution = app.renderer.resolution;
+game.onResize(({ resolution }) => { camera.resolution = resolution; });
+```
 
 ## Zoom
 

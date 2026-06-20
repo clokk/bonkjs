@@ -124,6 +124,11 @@ container.position.set(
 );
 ```
 
+> For the fixed-sim / variable-render model (above), use the split `tick()` (smooth at the fixed sim rate, in
+> `onFixedUpdate`) + `apply(shakeX?, shakeY?)` (write at render rate, in `onUpdate`), with `pixelSnap` +
+> `resolution` for crisp static geometry under shake. `update()` remains the single-call convenience. See
+> [CAMERA.md](./CAMERA.md).
+
 The camera needs `viewport` dimensions in its config for bounds clamping:
 
 ```typescript
