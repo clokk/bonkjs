@@ -67,6 +67,15 @@ The `Game` class creates a PixiJS Application and runs a dual-timestep loop:
 - **Late update** — Runs after variable update. Use for camera follow (needs final positions).
 - **PixiJS rendering** — Handled automatically by PixiJS Application's internal ticker. No manual `render()` call needed.
 
+#### Time scale, freeze & frame-step
+
+The fixed accumulator advances by `Time.deltaTime` (= clamped frame dt × **`Time.timeScale`**), so `Time.timeScale` scales the **whole simulation**, not just `Time.deltaTime`:
+
+- **`Time.timeScale = 1`** — normal.
+- **`Time.timeScale = 0.25`** — slow-mo (the fixed sim runs at quarter speed; great for inspecting fast movement / VFX).
+- **`Time.timeScale = 0`** — **freeze**: the accumulator never crosses `1/60`, so `onFixedUpdate` stops firing and the sim holds still — but `onUpdate` / `onLateUpdate` keep running every frame, so the frozen frame still renders and input/dev tools stay live (ideal for inspecting or screenshotting a transient state). This is distinct from **`pause()`**, which halts the *entire* loop (render included).
+- **`game.step(n = 1)`** — advance exactly `n` fixed ticks on the next frame, regardless of `timeScale`. Pair with `Time.timeScale = 0` for **frame-by-frame** debugging (freeze, then step one tick at a time and watch each frame render).
+
 ### Initialization
 
 `Game.init()` creates the PixiJS Application and returns raw objects:

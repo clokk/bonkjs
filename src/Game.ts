@@ -83,6 +83,7 @@ export class Game {
   private animFrameId: number | null = null;
   private lastTime = 0;
   private fixedAccumulator = 0;
+  private pendingSteps = 0;
   private readonly maxDeltaTime = 0.25;
 
   /** Initialize PixiJS and input. Returns canvas + raw containers. */
@@ -260,6 +261,17 @@ export class Game {
     }
   }
 
+  /** Manually advance `steps` fixed-update ticks on the next frame, regardless of {@link Time.timeScale}.
+   *
+   *  Pairs with `Time.timeScale = 0` (freeze the simulation) for frame-by-frame debugging: the fixed update
+   *  is frozen, and each `step()` nudges it forward exactly one tick. The variable update (render) keeps
+   *  running every frame either way, so the stepped frame draws and you can inspect/screenshot it. Note this
+   *  differs from {@link Game.pause}, which halts the WHOLE loop (render included) — step() needs the loop
+   *  live, i.e. freeze via `Time.timeScale = 0`, not `pause()`. */
+  step(steps = 1): void {
+    this.pendingSteps += Math.max(0, Math.floor(steps));
+  }
+
   /** Clean up all resources. */
   destroy(): void {
     this.stop();
@@ -286,14 +298,23 @@ export class Game {
     if (!this.paused) {
       Time.update(dt);
 
-      // Fixed timestep loop
-      this.fixedAccumulator += dt;
+      // Fixed timestep loop — accumulate SCALED time (Time.deltaTime = clamped dt × Time.timeScale), so
+      // `Time.timeScale = 0` freezes the simulation and 0.5 = slow-mo. The variable update below still runs
+      // every frame, so render + input keep going even while the sim is frozen.
+      this.fixedAccumulator += Time.deltaTime;
       while (this.fixedAccumulator >= Time.fixedDeltaTime) {
         this.fixedAccumulator -= Time.fixedDeltaTime;
         for (const cb of this.fixedUpdateCallbacks) cb();
       }
 
-      // Variable timestep update
+      // Manual frame-steps — advance fixed ticks on demand regardless of timeScale (frame-by-frame stepping
+      // while frozen; see step()).
+      while (this.pendingSteps > 0) {
+        this.pendingSteps--;
+        for (const cb of this.fixedUpdateCallbacks) cb();
+      }
+
+      // Variable timestep update — ALWAYS runs (render/input live even when the sim is frozen or slowed).
       for (const cb of this.updateCallbacks) cb();
 
       // Late update
