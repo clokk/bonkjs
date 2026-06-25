@@ -129,6 +129,18 @@ The split matters for diagnosis: a code in `heldPhysicalKeys()` is a real keypre
 console.log('held →', { phys: Input.heldPhysicalKeys(), virt: Input.heldVirtualKeys() });
 ```
 
+## Focus Loss & Stuck Keys
+
+When the window loses focus — alt-tab, clicking another app/window, opening devtools, or the tab being backgrounded — the OS stops delivering `keyup`, so any key held at that moment would otherwise stay wedged in `keysHeld` forever (and edge-triggered toggles that read the held state would never re-arm). Input listens for `blur` and `visibilitychange` (→ hidden) and flushes held keyboard + mouse state automatically; you don't need to wire anything.
+
+Physical keys are dropped only when no virtual key is also holding the same code, and pending per-frame edges (`getKeyDown`/`getKeyUp`) are cleared so a phantom press/release can't survive the focus gap (`update()` may not run while the tab is hidden). Virtual keys injected by `GamepadControls`/touch are owned by their source and released there on the same blur.
+
+You can also flush manually (e.g. on a custom pause that should drop all held input):
+
+```typescript
+Input.clearHeldInput();   // release all held keyboard + mouse, respecting virtual keys
+```
+
 ## Using Input in Game Code
 
 All input methods are static on the `Input` class. Your game uses them however it wants — bonkjs doesn't impose any entity or component system:

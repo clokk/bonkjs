@@ -179,6 +179,43 @@ export class Input {
     }
   };
 
+  // Window lost focus (alt-tab, clicking another app/window, devtools) — the OS
+  // stops delivering keyup, so any key held at that moment would "stick" in
+  // keysHeld forever. Flush held input so edge-triggered consumers (toggles) can
+  // re-arm cleanly when focus returns.
+  private static onWindowBlur = (): void => {
+    Input.clearHeldInput();
+  };
+
+  // Tab backgrounded — same risk as blur (no keyup arrives while hidden).
+  private static onVisibilityChange = (): void => {
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+      Input.clearHeldInput();
+    }
+  };
+
+  /**
+   * Release all currently-held keyboard + mouse input, as if every key/button
+   * were lifted. Called automatically on window blur / tab-hide so input can't
+   * "stick" when a keyup is never delivered (focus left mid-press). Physical
+   * keys are dropped from {@link keysHeld} only when no virtual key is also
+   * holding them; virtual keys (gamepad/touch) are owned by their source and
+   * cleared there (e.g. GamepadControls releases on the same blur). Pending
+   * per-frame edges are dropped too, so a phantom press/release can't survive
+   * the focus gap (update() may not run while the tab is hidden).
+   */
+  static clearHeldInput(): void {
+    for (const code of this.physicalKeysHeld) {
+      if (!this.virtualKeysHeld.has(code)) this.keysHeld.delete(code);
+    }
+    this.physicalKeysHeld.clear();
+    this.mouseButtonsHeld.clear();
+    this.keysDown.clear();
+    this.keysUp.clear();
+    this.mouseButtonsDown.clear();
+    this.mouseButtonsUp.clear();
+  }
+
   // ==================== Lifecycle ====================
 
   /**
@@ -202,6 +239,12 @@ export class Input {
     window.addEventListener('mouseup', this.onMouseUp);
     window.addEventListener('mousemove', this.onMouseMove);
     window.addEventListener('contextmenu', this.onContextMenu);
+
+    // Focus loss — flush held input so keys don't stick (no keyup while unfocused)
+    window.addEventListener('blur', this.onWindowBlur);
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', this.onVisibilityChange);
+    }
 
     // Initialize axis values
     for (const axis of Object.keys(this.config.axes)) {
@@ -239,6 +282,10 @@ export class Input {
     window.removeEventListener('mouseup', this.onMouseUp);
     window.removeEventListener('mousemove', this.onMouseMove);
     window.removeEventListener('contextmenu', this.onContextMenu);
+    window.removeEventListener('blur', this.onWindowBlur);
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', this.onVisibilityChange);
+    }
 
     this.keysHeld.clear();
     this.keysDown.clear();

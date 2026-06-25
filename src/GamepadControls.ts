@@ -100,6 +100,8 @@ export class GamepadControls {
   // Event handler refs for cleanup
   private onGamepadConnected: ((e: GamepadEvent) => void) | null = null;
   private onGamepadDisconnected: ((e: GamepadEvent) => void) | null = null;
+  private onWindowBlur: (() => void) | null = null;
+  private onVisibilityChange: (() => void) | null = null;
   private unsubscribeInputMode: (() => void) | null = null;
 
   constructor(config?: GamepadControlsConfig) {
@@ -174,6 +176,22 @@ export class GamepadControls {
     };
     window.addEventListener('gamepadconnected', this.onGamepadConnected);
     window.addEventListener('gamepaddisconnected', this.onGamepadDisconnected);
+
+    // Focus loss — the Gamepad API stops updating while the window is unfocused
+    // or the tab is hidden, so the last-injected virtual keys + edge-detection
+    // state would freeze. Release everything so input can't "stick" (e.g. a held
+    // sprint toggle wedging because no release edge ever lands) and re-syncs
+    // cleanly from the live pad state once focus returns.
+    this.onWindowBlur = () => this.releaseAllKeys();
+    window.addEventListener('blur', this.onWindowBlur);
+    this.onVisibilityChange = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+        this.releaseAllKeys();
+      }
+    };
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', this.onVisibilityChange);
+    }
 
     // Check if already connected
     this.checkInitialConnection();
@@ -391,7 +409,11 @@ export class GamepadControls {
     if (this._currentIndex === null && !this.adoptAvailableGamepad()) return null;
     const gp = navigator.getGamepads()[this._currentIndex!];
     if (gp && gp.mapping === 'standard' && gp.connected) return gp;
-    // Latched slot went stale without a disconnect event firing — try another.
+    // Latched slot went stale without a disconnect event firing (controller slept
+    // or idled out — common while sitting on a pause screen). Release injected keys
+    // + reset edge state so we don't leak a stuck virtual key or a stale prevButton
+    // state that swallows the next press edge; re-sync from whatever pad is present.
+    this.releaseAllKeys();
     this._currentIndex = null;
     this._connected = false;
     if (this.adoptAvailableGamepad()) {
@@ -558,6 +580,12 @@ export class GamepadControls {
     }
     if (this.onGamepadDisconnected) {
       window.removeEventListener('gamepaddisconnected', this.onGamepadDisconnected);
+    }
+    if (this.onWindowBlur) {
+      window.removeEventListener('blur', this.onWindowBlur);
+    }
+    if (this.onVisibilityChange && typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', this.onVisibilityChange);
     }
     if (this.unsubscribeInputMode) {
       this.unsubscribeInputMode();

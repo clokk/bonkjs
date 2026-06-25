@@ -188,6 +188,15 @@ Listens for `gamepadconnected`/`gamepaddisconnected` events and checks initial s
 gamepad.connected  // true if a standard gamepad is connected
 ```
 
+### Focus loss & idle controllers
+
+The browser Gamepad API stops updating while the window is unfocused or the tab is hidden, and wireless controllers can sleep/idle out (common while sitting on a pause screen) — leaving the last-injected virtual keys and edge-detection state frozen. Two safeguards keep input from "sticking":
+
+- On `blur`/`visibilitychange` (→ hidden), all injected virtual keys are released and edge state is reset.
+- When the latched gamepad slot goes stale mid-poll *without* a `gamepaddisconnected` event firing (the controller-slept case), injected keys + edge state are released before re-syncing from whatever pad is present.
+
+Both prevent a held input — e.g. a sprint toggle read off the held state — from wedging because no release edge ever lands. Input re-syncs cleanly from the live pad once it reports again.
+
 ## Vibration
 
 Optional rumble via `GamepadHapticActuator.playEffect('dual-rumble')`. Silently fails on unsupported browsers or gamepads.
