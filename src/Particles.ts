@@ -29,6 +29,10 @@ export interface Particle {
   angle: number;       // radians — for line orientation
   fadeIn: number;      // frames to ramp alpha 0→full at spawn (0 = snap to full, the default). An attack ramp so
                        // bright layers don't peak on frame 0 — that hard snap reads as a flash/strobe.
+  grow: number;        // px ADDED to `size` each tick — a size velocity. 0 = constant size (default). Positive =
+                       // expand (a ring that rushes outward as a traveling shockwave, a billowing puff); negative
+                       // = shrink. Applied in update() before the shape's own life-fade in render, so they compose.
+                       // `size` is clamped ≥0 so a negative grow can't invert the shape.
 }
 
 /** Configuration for a Particles system. */
@@ -68,6 +72,7 @@ export class Particles {
       shape: 'circle',
       angle: 0,
       fadeIn: 0,
+      grow: 0,
       ...opts,
     });
   }
@@ -80,6 +85,7 @@ export class Particles {
       p.y += p.vy;
       p.vx *= p.drag;
       p.vy *= p.drag;
+      if (p.grow !== 0) p.size = Math.max(0, p.size + p.grow);   // size velocity (expanding shockwave / billow)
       p.life--;
       if (p.life <= 0) this.pool.splice(i, 1);
     }

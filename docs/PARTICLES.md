@@ -39,10 +39,11 @@ particles.emit({ x: 400, y: 300, vx: 2, vy: -1, color: 0xffcc44, size: 5, life: 
 | `shape` | `'circle'` | `'circle'` \| `'line'` \| `'ring'` |
 | `angle` | `0` | radians — line orientation |
 | `fadeIn` | `0` | frames to ramp alpha 0→full at spawn (attack ramp; 0 = snap) |
+| `grow` | `0` | px added to `size` each tick — a size velocity. `+` expands (a ring rushing outward as a traveling shockwave, a billowing puff), `−` shrinks. `size` clamps ≥0. |
 
 ## Behavior
 
-- **`update()`** — `x += vx; y += vy; vx *= drag; vy *= drag; life--;` and removes particles at `life <= 0`.
+- **`update()`** — `x += vx; y += vy; vx *= drag; vy *= drag; size += grow (clamped ≥0); life--;` and removes particles at `life <= 0`.
 - **`render()`** — clears both channels and redraws each live particle. Alpha = `alpha * (life/maxLife) * fadeInRamp`.
   Per-shape animation: **circle** shrinks (`size*(0.4+0.6t)`), **ring** grows slightly while fading
   (`size*(1−0.3t)`), **line** shortens (`half = size*t`). `t` runs 1→0 over the lifetime.
@@ -53,3 +54,17 @@ particles.emit({ x: 400, y: 300, vx: 2, vy: -1, color: 0xffcc44, size: 5, life: 
 The NORMAL (dark) channel lets you lay a dark cavity *behind* a bright ADD burst so the bright sparks pop instead
 of washing out — a contrast trick worth building presets around. Emit both in one burst (a `normal` cavity + an
 `add` ring/sparks) for punchy, readable hits.
+
+## Expanding shockwave (`grow`)
+
+The built-in `ring` shape only expands ~30% over its life. For a **thin ring that rushes outward to a target
+radius** (a shockwave, an explosion front, a pulse), give it a `grow` size-velocity — start small and let it race
+out: `grow ≈ targetRadius / life`.
+
+```typescript
+// A ring that rushes from ~0 out to ~220px over 14 frames, fading as it goes:
+particles.emit({ x, y, shape: 'ring', size: 6, grow: 16, thickness: 5, life: 14, maxLife: 14, drag: 1, color: 0x8fe4ff });
+```
+
+`grow` also billows circles (an expanding puff/cloud) and works with `vx/vy`, so a particle can travel *and* grow
+(a wave front drifting outward). Negative `grow` shrinks (size clamps at 0).
