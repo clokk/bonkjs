@@ -39,6 +39,7 @@ sound.play('boom', { volume: 0.7, pan: -0.4, pitch: 0.9 });
 | `decay` | `1.5` | decay-curve exponent after the attack: `1` linear, `2+` punchier |
 | `noise` | `0` | 0..1 white noise mixed over the tone (grit for shots/impacts) |
 | `lowpass` | off | one-pole lowpass cutoff Hz, baked in (tames square/saw/noise) |
+| `lowpassEnd` | = `lowpass` | end cutoff — the filter **sweeps** over the duration (exponential). On noise this is the difference between TV static and **wind/motion** |
 | `volume` | `1` | baked gain 0..1 |
 | `jitter` | `0` | ± fraction of random `playbackRate` per play (`0.05` = ±5%) — cheap variety on repeated sounds |
 | `bus` | `'sfx'` | bus this sound routes through (auto-created) |

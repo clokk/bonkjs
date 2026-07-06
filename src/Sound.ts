@@ -21,6 +21,9 @@ export interface SfxDef {
   decay?: number;        // decay-curve exponent after the attack: 1 = linear fade, 2+ = punchier. Default 1.5.
   noise?: number;        // 0..1 white-noise mixed over the tone (grit for shots/impacts). Default 0.
   lowpass?: number;      // one-pole lowpass cutoff in Hz, baked in (tames square/saw/noise). Undefined = off.
+  lowpassEnd?: number;   // end cutoff in Hz — the filter SWEEPS lowpass→lowpassEnd over the duration
+                         // (exponential). The difference between static and WIND on a noise source:
+                         // a fixed filter reads as TV hiss, a moving one reads as motion. Default = lowpass.
   volume?: number;       // 0..1 baked gain. Default 1.
   jitter?: number;       // ± fraction of random playbackRate variation per play (0.05 = ±5%). Default 0.
   bus?: string;          // bus this sound routes through (auto-created). Default 'sfx'.
@@ -172,7 +175,9 @@ export class Sound {
     const decayPow = def.decay ?? 1.5;
     const noiseMix = wave === 'noise' ? 1 : (def.noise ?? 0);
     const volume = def.volume ?? 1;
-    const lpAlpha = def.lowpass ? 1 - Math.exp((-2 * Math.PI * def.lowpass) / sr) : 1;
+    const lp0 = def.lowpass ?? 0;
+    const lp1 = def.lowpassEnd ?? lp0;
+    const lpSweep = lp0 > 0 && lp1 !== lp0;
 
     let phase = 0;
     let lp = 0;
@@ -198,7 +203,13 @@ export class Sound {
         : Math.pow(Math.max(0, 1 - (tSec - attack) / (duration - attack)), decayPow);
       s *= env * volume;
 
-      if (def.lowpass) { lp += lpAlpha * (s - lp); s = lp; }
+      if (lp0 > 0) {
+        // Exponential cutoff sweep lp0→lp1 (recomputing alpha per sample is cheap at bake time).
+        const cut = lpSweep ? lp0 * Math.pow(lp1 / lp0, t) : lp0;
+        const lpAlpha = 1 - Math.exp((-2 * Math.PI * cut) / sr);
+        lp += lpAlpha * (s - lp);
+        s = lp;
+      }
       data[i] = s;
     }
     return buf;
