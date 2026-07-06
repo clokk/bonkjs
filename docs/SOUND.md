@@ -6,7 +6,9 @@ waveform + exponential pitch slide + attack/decay envelope + white-noise mix + o
 give a prototype real, tunable gunfire/impact/UI sounds **with zero audio files**. Real samples can join
 later via `loadSample()` and play through the same buses.
 
-It handles the browser **autoplay policy** (the context resumes on the first user gesture; pre-gesture plays
+It handles the browser **autoplay policy** (the context resumes on a user gesture — retrying on every
+gesture until it's actually running, since modifier/Escape keydowns fire listeners without granting
+activation; pre-gesture plays
 are dropped, not queued) and **no-ops cleanly where WebAudio doesn't exist** (node/tests), so game code can
 call `play()` unconditionally.
 

@@ -60,12 +60,22 @@ export class Sound {
     this.master.gain.value = config.master ?? 1;
     this.master.connect(this.ctx.destination);
 
-    // Autoplay policy: the context starts suspended until a user gesture. Resume on the first one.
-    const unlock = () => {
-      if (this.ctx && this.ctx.state === 'suspended') void this.ctx.resume();
+    // Autoplay policy: the context starts suspended until a user gesture. Retry on EVERY gesture
+    // until the context is actually RUNNING, and only then detach. A one-shot listener here is a
+    // real trap: the browser fires keydown for modifier keys and Escape but grants NO user
+    // activation for them — so a first press of Shift/Esc would consume the one shot, resume()
+    // would silently no-op, and no later (activating) click could ever unlock the page's audio.
+    const cleanup = () => {
       window.removeEventListener('pointerdown', unlock);
       window.removeEventListener('keydown', unlock);
       window.removeEventListener('touchstart', unlock);
+    };
+    const unlock = () => {
+      if (!this.ctx) { cleanup(); return; }
+      if (this.ctx.state === 'running') { cleanup(); return; }
+      void this.ctx.resume().then(() => {
+        if (this.ctx && this.ctx.state === 'running') cleanup();
+      }).catch(() => { /* keep listening — the next gesture retries */ });
     };
     if (typeof window !== 'undefined') {
       window.addEventListener('pointerdown', unlock, { passive: true });
