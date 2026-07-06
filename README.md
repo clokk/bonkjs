@@ -1,6 +1,6 @@
 # bonkjs
 
-A lean PixiJS game toolkit. Game loop, input, camera, math, and devtools — nothing else.
+A lean PixiJS game toolkit. Game loop, input, camera, math, particles, sound, and devtools — nothing else.
 
 bonkjs gives you the 5% of engine plumbing every 2D game needs, then gets out of the way. You write game code directly against PixiJS. No scene graph, no entity system, no opinions about how your game should work.
 

@@ -23,6 +23,9 @@ export { Rng } from './Rng';
 // Particles — pooled 2D particle system (NORMAL + ADD blend channels)
 export { Particles, type Particle, type ParticleBlend, type ParticleShape, type ParticlesConfig } from './Particles';
 
+// Sound — zero-asset WebAudio SFX (parametric synth baked to buffers + bus gains + autoplay unlock)
+export { Sound, type SfxDef, type SfxWave, type SoundPlayOptions, type SoundConfig } from './Sound';
+
 // Splash — BonkJS crash-in logo animation for page load
 export { BonkSplash, type BonkSplashOptions } from './BonkSplash';
 
