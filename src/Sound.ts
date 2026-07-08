@@ -40,6 +40,19 @@ export interface SoundPlayOptions {
 export interface SoundConfig {
   /** Initial master volume 0..1. Default 1. */
   master?: number;
+  /**
+   * Master-bus LIMITER (a DynamicsCompressorNode between the master gain and the destination).
+   * When many sounds sum — a dense wave, ten kills in a frame — the raw mix clips and turns to
+   * mush; the limiter squashes the peaks so density stays loud-but-clean. On by default with
+   * limiter-ish settings; pass `false` to bypass, or override individual fields.
+   */
+  limiter?: boolean | {
+    threshold?: number;  // dB where compression starts. Default -18.
+    knee?: number;       // dB of soft-knee above the threshold. Default 12.
+    ratio?: number;      // input-dB per output-dB past the knee. Default 6.
+    attack?: number;     // seconds to clamp onto a peak. Default 0.003.
+    release?: number;    // seconds to let go. Default 0.25.
+  };
 }
 
 export class Sound {
@@ -49,6 +62,9 @@ export class Sound {
   private defs = new Map<string, SfxDef>();
   private buffers = new Map<string, AudioBuffer>();
   private lastPlayed = new Map<string, number>();
+  // Names whose buffer came from loadSample — parametric buffers bake def.volume in at register
+  // time, but a sample's file is untouched, so play() applies def.volume live for these.
+  private sampleNames = new Set<string>();
 
   constructor(config: SoundConfig = {}) {
     const AC: typeof AudioContext | undefined =
@@ -58,7 +74,19 @@ export class Sound {
     this.ctx = new AC();
     this.master = this.ctx.createGain();
     this.master.gain.value = config.master ?? 1;
-    this.master.connect(this.ctx.destination);
+    if (config.limiter !== false) {
+      const lim = config.limiter === true || config.limiter === undefined ? {} : config.limiter;
+      const comp = this.ctx.createDynamicsCompressor();
+      comp.threshold.value = lim.threshold ?? -18;
+      comp.knee.value = lim.knee ?? 12;
+      comp.ratio.value = lim.ratio ?? 6;
+      comp.attack.value = lim.attack ?? 0.003;
+      comp.release.value = lim.release ?? 0.25;
+      this.master.connect(comp);
+      comp.connect(this.ctx.destination);
+    } else {
+      this.master.connect(this.ctx.destination);
+    }
 
     // Autoplay policy: the context starts suspended until a user gesture. Retry on EVERY gesture
     // until the context is actually RUNNING, and only then detach. A one-shot listener here is a
@@ -92,6 +120,7 @@ export class Sound {
   /** Register (or replace) a parametric sound — bakes its buffer now. */
   register(name: string, def: SfxDef): void {
     this.defs.set(name, def);
+    this.sampleNames.delete(name);
     if (this.ctx) this.buffers.set(name, this.bake(def));
   }
 
@@ -110,6 +139,7 @@ export class Sound {
     const buf = await this.ctx.decodeAudioData(await res.arrayBuffer());
     this.defs.set(name, def);
     this.buffers.set(name, buf);
+    this.sampleNames.add(name);
   }
 
   /** Fire a registered sound. Safe to call unconditionally — no-ops when unavailable/locked/rate-limited. */
@@ -131,7 +161,8 @@ export class Sound {
     src.playbackRate.value = (opts.pitch ?? 1) * (1 + (Math.random() * 2 - 1) * jitter);
 
     let node: AudioNode = src;
-    const vol = opts.volume ?? 1;
+    // Samples apply def.volume here (parametric buffers already baked theirs in).
+    const vol = (opts.volume ?? 1) * (this.sampleNames.has(name) ? (def.volume ?? 1) : 1);
     if (vol !== 1) {
       const gain = this.ctx.createGain();
       gain.gain.value = vol;

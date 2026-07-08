@@ -12,6 +12,15 @@ activation; pre-gesture plays
 are dropped, not queued) and **no-ops cleanly where WebAudio doesn't exist** (node/tests), so game code can
 call `play()` unconditionally.
 
+A **master limiter** (a `DynamicsCompressorNode` between the master gain and the destination) is on by
+default: when many sounds sum — a dense wave, ten kills in a frame — the raw mix clips and turns to mush;
+the limiter squashes the peaks so density stays loud-but-clean. Pass `limiter: false` to bypass, or an
+object to override its fields (`threshold` −18 dB, `knee` 12, `ratio` 6, `attack` 0.003 s, `release` 0.25 s).
+
+```typescript
+const sound = new Sound({ master: 0.8, limiter: { threshold: -24, ratio: 8 } });
+```
+
 ## Basic Usage
 
 ```typescript
@@ -68,9 +77,13 @@ sound.setBusVolume('sfx', 0.6);   // e.g. buses: 'sfx', 'ui', 'music'
 ## Real samples (later)
 
 ```typescript
-await sound.loadSample('boss_roar', '/audio/roar.ogg', { bus: 'sfx', jitter: 0.03 });
+await sound.loadSample('boss_roar', '/audio/roar.ogg', { bus: 'sfx', volume: 0.6, jitter: 0.03 });
 sound.play('boss_roar');
 ```
+
+The def's non-synth fields apply: `bus`, `jitter`, `minInterval`, and `volume` (applied live at play time —
+a sample's file isn't re-baked). Loading a sample under an **existing parametric name replaces it**, so a
+prototype recipe can play until the real file lands.
 
 ## Notes
 
