@@ -67,7 +67,11 @@ async function main() {
   let framesLastSecond = 0;
   let tickRate = 0;
   let fps = 0;
-  let hiddenTicks = 0; // ticks accumulated while the document was hidden — the throttling proof
+  // Throttling probe: worst wall-clock gap between sim ticks. backgroundThrottling:false
+  // pins visibilityState to 'visible', so a hidden-tick counter can never fire — instead,
+  // alt-tab/minimize for a while and read this: ~17ms = never throttled, ~1000ms = throttled.
+  let lastTickMs = performance.now();
+  let maxTickGapMs = 0;
   setInterval(() => {
     tickRate = ticks - ticksLastSecond;
     fps = frames - framesLastSecond;
@@ -77,7 +81,9 @@ async function main() {
 
   game.onFixedUpdate(() => {
     ticks++;
-    if (document.visibilityState === 'hidden') hiddenTicks++;
+    const now = performance.now();
+    if (ticks > 60) maxTickGapMs = Math.max(maxTickGapMs, now - lastTickMs); // skip boot settle
+    lastTickMs = now;
     for (const s of sprites) {
       s.g.x += s.vx;
       s.g.y += s.vy;
@@ -103,7 +109,7 @@ async function main() {
       fps,
       tickRate,
       ticks,
-      hiddenTicks,
+      maxTickGapMs: Math.round(maxTickGapMs),
       audio: audioProbe.state,
       gamepad: gamepadInfo(),
       shell: (window as any).bonkDesktop?.versions?.electron ?? 'browser',
@@ -124,7 +130,7 @@ async function main() {
       : 'none connected (plug in / press a button)';
     hud.text = [
       `bonk desktop smoke harness   shell: electron ${r.shell}`,
-      `renderer: ${r.renderer}   fps: ${r.fps}   sim: ${r.tickRate}/s   hidden ticks: ${r.hiddenTicks}`,
+      `renderer: ${r.renderer}   fps: ${r.fps}   sim: ${r.tickRate}/s   worst tick gap: ${r.maxTickGapMs}ms`,
       `audio (no gesture): ${r.audio}`,
       `gamepad: ${pad}`,
       `[Space] blip   [F] fullscreen`,

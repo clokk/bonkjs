@@ -8,7 +8,8 @@
     "web:build": "vite build",
     "start": "npm run web:build && electron .",
     "smoke": "npm run web:build && BONK_SMOKE=1 electron .",
-    "dist": "npm run web:build && electron-builder --mac --arm64"
+    "dist": "npm run web:build && electron-builder --mac --arm64",
+    "dist:notarized": "npm run web:build && electron-builder --mac --arm64 -c.mac.notarize=true"
   },
   "dependencies": {
     "pixi.js": "^8.6.6"
