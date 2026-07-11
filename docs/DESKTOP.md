@@ -186,6 +186,31 @@ Verified end-to-end 2026-07-11: launch 1 "serving packaged dac0f415 / up to
 date"; deploy mutated → launch 2 "staged fa7a20b1 (1 downloaded, 70 reused)";
 launch 3 "serving cache fa7a20b1" with the new content live.
 
+### Shell endpoints — letting the game offer a restart (0.6.9)
+
+Staged updates serve NEXT launch, and desktop sessions are long-lived
+(backgroundThrottling off — players leave the app open), so the game should
+TELL the player when an update is ready. The bridge is two virtual endpoints
+on the privileged scheme the shell already owns — no preload, no IPC,
+contextIsolation untouched (a plain `fetch` from the game works because the
+page's origin IS the scheme):
+
+```
+GET  /__shell/status   → { desktop: true, served, staged, updateReady, platform }
+POST /__shell/check    → run a manifest check NOW, respond with status after
+POST /__shell/relaunch → app.relaunch() + exit — comes back up on the staged bundle
+```
+
+The shell re-checks the manifest every 15 minutes on its own; `/__shell/check`
+runs one on demand so the game can check at meaningful moments (entering the
+main menu; a multiplayer join rejected for protocol mismatch). Recommended
+game-side pattern: POST check on every main-menu entry, surface an "update
+ready — restart" menu row when `updateReady`, POST relaunch on confirm. **Ask, never force** — an auto-relaunch
+mid-session (especially mid-multiplayer-run) is hostile; menu-level restart is
+free. On a pre-0.6.9 shell the status fetch just fails — treat that as
+"no update info" and show nothing. (Working example: afterlight's
+`src/desktop-shell.ts` + its menu row.)
+
 ---
 
 # Research & Strategy record (2026-07-11)

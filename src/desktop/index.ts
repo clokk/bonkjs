@@ -132,8 +132,43 @@ export async function createGameShell(opts: GameShellOptions = {}): Promise<void
     console.log(`[shell] serving ${served.source} bundle${served.manifest ? ` ${served.manifest.version.slice(0, 8)}` : ''}`);
   }
 
-  protocol.handle(scheme, (req: { url: string }) => {
+  // Update state the /__shell/* endpoints report. `staged` is set when a
+  // background check lands a new version (serves NEXT launch) — the game reads
+  // it and offers the player a restart; the shell never forces one.
+  const servedVersion = servedManifest?.version ?? null;
+  let stagedVersion: string | null = null;
+  // Assigned below once the update-check closure exists (remoteBundle only).
+  let triggerUpdateCheck: (() => Promise<void>) | null = null;
+  const statusResponse = () => new Response(
+    JSON.stringify({
+      desktop: true,
+      served: servedVersion,
+      staged: stagedVersion,
+      updateReady: !!stagedVersion && stagedVersion !== servedVersion,
+      platform: process.platform,
+    }),
+    { headers: { 'content-type': 'application/json' } },
+  );
+
+  protocol.handle(scheme, (req: { url: string; method?: string }) => {
     let p = decodeURIComponent(new URL(req.url).pathname);
+
+    // Virtual shell endpoints — the renderer↔shell bridge over the scheme the
+    // shell already owns (no preload/IPC; contextIsolation stays untouched).
+    //   GET  /__shell/status   → { desktop, served, staged, updateReady, platform }
+    //   POST /__shell/check    → run a manifest check NOW, respond with status after
+    //   POST /__shell/relaunch → relaunch the app (picks up a staged update)
+    if (p === '/__shell/status') return statusResponse();
+    if (p === '/__shell/check' && req.method === 'POST') {
+      const run = triggerUpdateCheck;
+      return (async () => { if (run) await run(); return statusResponse(); })();
+    }
+    if (p === '/__shell/relaunch' && req.method === 'POST') {
+      console.log('[shell] relaunch requested by the game');
+      setTimeout(() => { app.relaunch(); app.exit(0); }, 50);
+      return new Response('ok');
+    }
+
     if (p === '/' || p === '') p = '/index.html';
     const abs = path.resolve(servedDir, `.${p}`);
     if (!abs.startsWith(path.resolve(servedDir) + path.sep)) {
@@ -198,8 +233,10 @@ export async function createGameShell(opts: GameShellOptions = {}): Promise<void
   app.on('window-all-closed', () => app.quit());
 
   if (opts.remoteBundle) {
-    void checkForBundleUpdate({
-      opts: opts.remoteBundle,
+    const rb = opts.remoteBundle;
+    const runUpdateCheck = () => checkForBundleUpdate({
+      // Compose onUpdateReady so /__shell/status sees the staged version too.
+      opts: { ...rb, onUpdateReady: (v: string) => { stagedVersion = v; rb.onUpdateReady?.(v); } },
       packagedDir: webDir,
       cacheDir,
       served: servedManifest,
@@ -207,6 +244,12 @@ export async function createGameShell(opts: GameShellOptions = {}): Promise<void
       fetch: (url: string) => net.fetch(url),
       log: (msg: string) => console.log('[shell]', msg),
     });
+    triggerUpdateCheck = runUpdateCheck;
+    void runUpdateCheck();
+    // Desktop sessions are long-lived (backgroundThrottling off — people leave the
+    // app open); re-check so a mid-session deploy still gets noticed and offered.
+    // (/__shell/check also triggers one on demand — the game checks at its menu.)
+    setInterval(() => void runUpdateCheck(), 15 * 60_000);
   }
 
   if (smoke) {
