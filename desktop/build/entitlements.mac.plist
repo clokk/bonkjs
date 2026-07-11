@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- V8 JIT — the ONE exception a plain Electron game needs under hardened runtime.
+       (allow-unsigned-executable-memory is obsolete on Electron ≥12 — do not add it.) -->
+  <key>com.apple.security.cs.allow-jit</key><true/>
+
+  <!-- Uncomment BOTH when the build loads steamworks.js (Valve-documented; harmless
+       in the direct-download build — ship one plist everywhere). NEVER add
+       com.apple.security.app-sandbox: Steam is incompatible with it.
+  <key>com.apple.security.cs.disable-library-validation</key><true/>
+  <key>com.apple.security.cs.allow-dyld-environment-variables</key><true/>
+  -->
+</dict>
+</plist>

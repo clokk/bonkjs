@@ -1,0 +1,21 @@
+{
+  "name": "bonkjs-desktop",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Electron desktop shell + smoke harness for bonkjs games — strategy + config rationale in docs/DESKTOP.md",
+  "main": "main.cjs",
+  "scripts": {
+    "web:build": "vite build",
+    "start": "npm run web:build && electron .",
+    "smoke": "npm run web:build && BONK_SMOKE=1 electron .",
+    "dist": "npm run web:build && electron-builder --mac --arm64"
+  },
+  "dependencies": {
+    "pixi.js": "^8.6.6"
+  },
+  "devDependencies": {
+    "electron": "^40.0.0",
+    "electron-builder": "^26.0.0",
+    "vite": "^6.0.7"
+  }
+}

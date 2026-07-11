@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>bonk desktop</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { background: #000; height: 100%; overflow: hidden; }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script>
+      // boot-error trap for the smoke harness — module errors + unhandled
+      // rejections don't reliably reach Electron's console-message event
+      window.__bootErr = null;
+      window.addEventListener('error', (e) => { window.__bootErr = String(e.error?.stack || e.message); });
+      window.addEventListener('unhandledrejection', (e) => { window.__bootErr = String(e.reason?.stack || e.reason); });
+    </script>
+    <script type="module" src="./src/demo.ts"></script>
+  </body>
+</html>
