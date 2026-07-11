@@ -27,7 +27,23 @@
  * it's externalized from the build and imported dynamically at runtime.
  */
 
+import { resolveServedBundle, checkForBundleUpdate, type RemoteBundleOptions } from './remote-bundle';
+
+export type { RemoteBundleOptions, BundleManifest } from './remote-bundle';
+
 export interface GameShellOptions {
+  /**
+   * Hot content updates for DIRECT-DOWNLOAD builds (dmg/zip from your site or
+   * itch): serve the newest local bundle instantly, background-fetch the
+   * deploy's manifest.json, download only changed files (hash-verified),
+   * serve on next launch. The ~100MB shell itself never re-downloads.
+   *
+   * STEAM BUILDS MUST OMIT THIS — Steam delta-patches through its own depot
+   * system and players expect patches to arrive through Steam; self-updating
+   * content outside Steam's pipeline is policy-gray. Package per channel:
+   * the Steam electron-builder config leaves `remoteBundle` out.
+   */
+  remoteBundle?: RemoteBundleOptions;
   /** Absolute path to the built web bundle. Default: `<appPath>/dist-web`. */
   webDir?: string;
   /** Initial window size. Default 1600×900. */
@@ -78,10 +94,29 @@ export async function createGameShell(opts: GameShellOptions = {}): Promise<void
   await app.whenReady();
 
   const webDir = opts.webDir ?? path.join(app.getAppPath(), 'dist-web');
+
+  // remoteBundle: pick the newest LOCAL bundle for this launch (never blocks
+  // on the network); the update check runs in the background after the window
+  // is up and stages new versions for the NEXT launch.
+  let servedDir = webDir;
+  let servedManifest = null as import('./remote-bundle').BundleManifest | null;
+  let cacheDir = '';
+  if (opts.remoteBundle) {
+    cacheDir = opts.remoteBundle.cacheDir ?? path.join(app.getPath('userData'), 'bundle-cache');
+    const served = await resolveServedBundle(webDir, cacheDir);
+    servedDir = served.dir;
+    servedManifest = served.manifest;
+    console.log(`[shell] serving ${served.source} bundle${served.manifest ? ` ${served.manifest.version.slice(0, 8)}` : ''}`);
+  }
+
   protocol.handle(scheme, (req: { url: string }) => {
     let p = decodeURIComponent(new URL(req.url).pathname);
     if (p === '/' || p === '') p = '/index.html';
-    return net.fetch(pathToFileURL(path.join(webDir, p)).toString());
+    const abs = path.resolve(servedDir, `.${p}`);
+    if (!abs.startsWith(path.resolve(servedDir) + path.sep)) {
+      return new Response('forbidden', { status: 403 });
+    }
+    return net.fetch(pathToFileURL(abs).toString());
   });
 
   const win = new BrowserWindow({
@@ -108,6 +143,18 @@ export async function createGameShell(opts: GameShellOptions = {}): Promise<void
   console.log('[shell] display', display.size, `${display.displayFrequency}Hz`, `scale ${display.scaleFactor}`);
 
   app.on('window-all-closed', () => app.quit());
+
+  if (opts.remoteBundle) {
+    void checkForBundleUpdate({
+      opts: opts.remoteBundle,
+      packagedDir: webDir,
+      cacheDir,
+      served: servedManifest,
+      servedDir,
+      fetch: (url: string) => net.fetch(url),
+      log: (msg: string) => console.log('[shell]', msg),
+    });
+  }
 
   if (smoke) {
     const probe = opts.smokeProbe

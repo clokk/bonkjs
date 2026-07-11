@@ -69,6 +69,58 @@ top-level-await the game boot — TLA in the entry chunk deadlocks pixi's
 dynamic `browserAll` import in production vite builds (silent hang, dev server
 unaffected). Boot with `void main()`.
 
+## Update channels — Steam vs direct download (IMPORTANT)
+
+The app is a ~100MB shell that almost never changes wrapping a few-MB game
+bundle that changes constantly. How updates reach players is a PER-CHANNEL
+decision, and the two channels must be packaged differently:
+
+| | Steam channel | Direct download (your site / itch) |
+|---|---|---|
+| Game updates | Steam depots delta-patch natively — upload the new build, done | `remoteBundle` hot updates (below) |
+| Shell updates | same — it's just part of the depot | rare; electron-updater (needs signed builds) or "grab the new dmg" |
+| `remoteBundle` option | **MUST BE OMITTED** | on |
+
+Why the hard rule: Steam players expect patches to arrive through Steam,
+Steam's own delta patching makes it redundant, and self-updating game content
+outside Steam's pipeline is policy-gray. Keep one electron-builder config per
+channel; the Steam one leaves `remoteBundle` out of `main.mjs` (a build-time
+env or a second main file — either works).
+
+### remoteBundle — hot content updates for direct-download builds
+
+```js
+createGameShell({
+  remoteBundle: { manifestUrl: 'https://your-deploy.example/manifest.json' },
+});
+```
+
+Launch serves the newest LOCAL bundle instantly (packaged fallback or cached
+update — never blocks on the network, offline-safe). In the background the
+shell fetches the manifest, downloads only files whose sha256 changed (vite's
+content-hashed chunks make most updates a few KB–MB; unchanged files are
+reused from local copies by hash — large audio never re-downloads), verifies
+every hash, stages atomically under the game's userData, and serves the new
+version NEXT launch. A running session is never hot-swapped. Failures log and
+leave the current bundle untouched.
+
+Generate the manifest at build time and deploy it beside the bundle (then
+every web deploy IS the desktop update — one version everywhere, which also
+keeps a multiplayer client protocol-aligned with its server):
+
+```js
+// scripts/desktop-manifest.mjs — run after vite build; writes dist/manifest.json
+// { version: <hash of all file hashes>, builtAt: ISO, files: { path: sha256 } }
+```
+
+(Full reference implementation: afterlight's `scripts/desktop-manifest.mjs`;
+manifest fetches are cache-busted with a query param — verify your CDN doesn't
+serve stale manifests regardless.)
+
+Verified end-to-end 2026-07-11: launch 1 "serving packaged dac0f415 / up to
+date"; deploy mutated → launch 2 "staged fa7a20b1 (1 downloaded, 70 reused)";
+launch 3 "serving cache fa7a20b1" with the new content live.
+
 ---
 
 # Research & Strategy record (2026-07-11)
