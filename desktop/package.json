@@ -9,7 +9,8 @@
     "start": "npm run web:build && electron .",
     "smoke": "npm run web:build && BONK_SMOKE=1 electron .",
     "dist": "npm run web:build && electron-builder --mac --arm64",
-    "dist:notarized": "npm run web:build && electron-builder --mac --arm64 -c.mac.notarize=true"
+    "dist:notarized": "npm run web:build && electron-builder --mac --arm64 -c.mac.notarize=true",
+    "dist:win": "npm run web:build && electron-builder --win --x64"
   },
   "dependencies": {
     "pixi.js": "^8.6.6",

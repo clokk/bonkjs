@@ -34,3 +34,19 @@ mac:
   # --- ad-hoc mode ($0 fallback, no Apple account): replace the block above with
   # identity: '-'
   # hardenedRuntime: false
+
+# Windows — cross-buildable from macOS/Linux (`npm run dist:win`). Unsigned by
+# default: SmartScreen shows "Windows protected your PC" on direct downloads
+# (More info → Run anyway); Steam/itch-app installs never see it. Clean direct
+# downloads need Authenticode signing (Azure Trusted Signing / an OV cert on a
+# hardware token) — see docs/DESKTOP.md → Windows.
+win:
+  icon: build/icon.png  # same 1024 png; electron-builder generates the .ico
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: zip
+      arch: [x64]
+nsis:
+  oneClick: true        # per-user install, no admin prompt — right for a game
+  deleteAppDataOnUninstall: false  # keep saves + the remoteBundle cache

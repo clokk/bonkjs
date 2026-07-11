@@ -68,6 +68,13 @@ export interface GameShellOptions {
   /** Privileged scheme name. Default 'app'. */
   scheme?: string;
   /**
+   * Windows only: the App User Model ID — set it to your electron-builder
+   * `appId` so the running window groups/pins with the installer's Start-menu
+   * shortcut (electron-builder's NSIS installer stamps shortcuts with appId)
+   * and toast notifications attribute correctly. Ignored on other platforms.
+   */
+  appUserModelId?: string;
+  /**
    * Smoke-mode probe: a JS expression evaluated in the page after `delayMs`
    * (default 8000). Its JSON result + collected renderer console errors print
    * to stdout as `[smoke] {...}`, then the app quits. Smoke mode runs when
@@ -96,6 +103,10 @@ export async function createGameShell(opts: GameShellOptions = {}): Promise<void
   const rendererErrors: string[] = [];
 
   app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
+
+  if (process.platform === 'win32' && opts.appUserModelId) {
+    app.setAppUserModelId(opts.appUserModelId);
+  }
 
   // Must run before app 'ready' — Electron delays 'ready' until the ESM main
   // module (including this await chain) finishes evaluating, so top-of-main is safe.

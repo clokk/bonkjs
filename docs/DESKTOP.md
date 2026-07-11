@@ -1,9 +1,14 @@
-# Desktop Builds — Mac (Electron)
+# Desktop Builds — Mac + Windows (Electron)
 
 `bonkjs/desktop` turns a bonk game (a pixi 2D vite bundle) into a native
 desktop app. The shared shell logic is a subpath export; a game adds one small
 `desktop/` folder of identity + packaging config. Working example: the
 `desktop/` folder in this repo.
+
+The shell (`createGameShell` + the remoteBundle updater) is platform-agnostic
+— one `main.mjs` serves every OS. Per-platform differences live entirely in
+`electron-builder.yml` (targets, icons, signing) plus one Windows-only shell
+option (`appUserModelId`, below).
 
 ## Using the Mac build target
 
@@ -68,6 +73,62 @@ signature and Rosetta 2 sunsets with macOS 27.
 top-level-await the game boot — TLA in the entry chunk deadlocks pixi's
 dynamic `browserAll` import in production vite builds (silent hang, dev server
 unaffected). Boot with `void main()`.
+
+## Using the Windows build target
+
+Same shell, same `main.mjs` — plus one Windows-only option:
+
+```js
+createGameShell({
+  width: 1600,
+  height: 900,
+  // Match electron-builder's appId: the NSIS installer stamps Start-menu
+  // shortcuts with appId as the App User Model ID; setting it at runtime too
+  // makes taskbar pinning/grouping and toast notifications attribute to the
+  // installed app instead of the bare exe. No-op on Mac/Linux.
+  appUserModelId: 'com.yourstudio.yourgame',
+});
+```
+
+**Packaging** — add a `win` section to `electron-builder.yml` (full template in
+this repo's `desktop/electron-builder.yml`): `icon: build/icon.png` (the same
+1024 png used for Mac — electron-builder generates the .ico), `nsis` + `zip`
+targets, x64 only (Windows-arm64 runs x64 fine; Steam Deck runs the x64 build
+via Proton — see Steam notes below). NSIS defaults worth pinning:
+`oneClick: true` (per-user install under `%LocalAppData%`, no admin prompt —
+right for a game) and `deleteAppDataOnUninstall: false` (an uninstall keeps
+saves + the remoteBundle cache).
+
+**Cross-building from macOS/Linux works** (`npm run dist:win`) — electron-
+builder edits PE resources and builds the NSIS installer without wine on
+modern versions. Unsigned cross-builds are fine; actual Authenticode signing
+is the one step that may force a Windows/CI machine depending on the method.
+
+`remoteBundle` hot updates work unchanged — the cache lives under the game's
+`userData` (`%AppData%/<productName>/bundle-cache`); staging, hash
+verification, and the atomic pointer swap are plain Node `fs` and behave
+identically. Same per-channel rule: **the Steam package omits `remoteBundle`.**
+
+### Windows signing reality (the Gatekeeper analogue)
+
+The blocker is **SmartScreen**, not the OS refusing to run. Per channel:
+
+| Channel | Unsigned ($0) | Authenticode signed |
+|---|---|---|
+| Steam | works — Steam-delivered exes don't get SmartScreen'd | works |
+| itch.io via the itch app | works | works |
+| Direct web download | "Windows protected your PC" → More info → Run anyway | EV/Trusted-Signing: clean immediately; OV: clean after reputation accrues |
+| Auto-update (electron-updater) | discouraged (unsigned updates) | works |
+
+Since 2023 traditional OV certs require hardware tokens (no more .pfx files),
+which breaks CI signing. The modern path is **Azure Trusted Signing** (~$10/mo,
+cloud-signed, CI-friendly, SmartScreen reputation included) once the direct-
+download Windows funnel matters. Until then: unsigned is the correct $0 mode —
+the SmartScreen ritual is two clicks, and the Steam/itch channels never see it.
+
+Smoke mode (`BONK_SMOKE=1`) runs on Windows unchanged for on-machine
+verification. Note a cross-built exe can't be smoke-tested on the build Mac —
+verify the artifact on real Windows (or Proton) before shipping it.
 
 ## Update channels — Steam vs direct download (IMPORTANT)
 
