@@ -46,9 +46,21 @@ export interface GameShellOptions {
   remoteBundle?: RemoteBundleOptions;
   /** Absolute path to the built web bundle. Default: `<appPath>/dist-web`. */
   webDir?: string;
-  /** Initial window size. Default 1600×900. */
+  /**
+   * Initial window size. Default 1600×900. This sizes the WEB CONTENT area
+   * (useContentSize), not the outer frame — so a 16:9 default is a true 16:9
+   * render surface with no letterbox gutters (the title bar would otherwise
+   * make the frame's content area wider than the size implies).
+   */
   width?: number;
   height?: number;
+  /**
+   * Lock the window to this width/height aspect ratio while the user resizes,
+   * so a fit-scaled game never shows letterbox gutters at any window size.
+   * Default: derived from width/height (16:9 at the defaults). Pass `0` to
+   * allow free-aspect resizing (gutters will appear off-ratio, by design).
+   */
+  aspectRatio?: number;
   /** Window background. Keep it OPAQUE. Default '#000000'. */
   backgroundColor?: string;
   /** Absolute path to a preload script (contextIsolation stays on). */
@@ -119,9 +131,14 @@ export async function createGameShell(opts: GameShellOptions = {}): Promise<void
     return net.fetch(pathToFileURL(abs).toString());
   });
 
+  const winW = opts.width ?? 1600;
+  const winH = opts.height ?? 900;
   const win = new BrowserWindow({
-    width: opts.width ?? 1600,
-    height: opts.height ?? 900,
+    width: winW,
+    height: winH,
+    // Size the WEB CONTENT, not the frame — otherwise the title bar shrinks the
+    // content area's height and a fit-scaled game pillarboxes at launch.
+    useContentSize: true,
     backgroundColor: opts.backgroundColor ?? '#000000',
     webPreferences: {
       ...(opts.preload ? { preload: opts.preload } : {}),
@@ -131,6 +148,10 @@ export async function createGameShell(opts: GameShellOptions = {}): Promise<void
       nodeIntegration: false,
     },
   });
+
+  // Keep the CONTENT area on-ratio during manual resize (no gutters at any size).
+  const ratio = opts.aspectRatio ?? winW / winH;
+  if (ratio > 0) win.setAspectRatio(ratio, { width: 0, height: 0 });
 
   win.webContents.on('console-message', (_e: unknown, level: number, message: string) => {
     if (level >= 3) rendererErrors.push(String(message).slice(0, 200));
