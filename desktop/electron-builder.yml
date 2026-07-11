@@ -21,13 +21,16 @@ mac:
       arch: [arm64]
     - target: dmg
       arch: [arm64]
-  # --- ad-hoc mode (default): free, no Apple account touched.
-  identity: '-'
-  hardenedRuntime: false
+  # --- SIGNED mode (current): auto-discovers the Developer ID Application
+  # identity from the login keychain (CSC_LINK/CSC_KEY_PASSWORD in CI).
+  # No identity name here on purpose — this repo is public.
+  hardenedRuntime: true
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
   gatekeeperAssess: false
-  # --- notarized mode: comment out `identity` above (auto-discovers the
-  # Developer ID cert from the keychain / CSC_LINK) and enable:
-  # hardenedRuntime: true
-  # entitlements: build/entitlements.mac.plist
-  # entitlementsInherit: build/entitlements.mac.plist
-  # notarize: true
+  # Flip to true once APPLE_API_KEY / APPLE_API_KEY_ID / APPLE_API_ISSUER are
+  # set (App Store Connect key) — that's the full clean-direct-download build.
+  notarize: false
+  # --- ad-hoc mode ($0 fallback, no Apple account): replace the block above with
+  # identity: '-'
+  # hardenedRuntime: false
