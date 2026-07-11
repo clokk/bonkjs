@@ -1,6 +1,6 @@
 {
   "name": "bonkjs",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "description": "PixiJS game toolkit — game loop, input, camera, vec2, particles, sound, splash, devtools",
   "type": "module",
   "main": "./dist/bonkjs.js",
@@ -10,6 +10,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/bonkjs.js"
+    },
+    "./desktop": {
+      "types": "./dist/desktop/index.d.ts",
+      "import": "./dist/desktop.js"
     }
   },
   "files": [

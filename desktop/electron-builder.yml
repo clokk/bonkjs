@@ -10,7 +10,7 @@ directories:
   output: release
   buildResources: build
 files:
-  - main.cjs
+  - main.mjs
   - preload.cjs
   - dist-web/**
 

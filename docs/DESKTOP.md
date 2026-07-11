@@ -1,12 +1,94 @@
-# Desktop Builds — Research & Strategy (2026-07-11)
+# Desktop Builds — Mac (Electron)
 
-Decision record from a four-track research pass (Mac Gatekeeper/signing reality,
-wrapper runtime comparison, GPU headroom outside the browser, the notarization
-pipeline). Goal: derisk shipping bonkjs games as desktop builds — Mac first —
-via Steam and web download, never the App Store.
+`bonkjs/desktop` turns a bonk game (a pixi 2D vite bundle) into a native
+desktop app. The shared shell logic is a subpath export; a game adds one small
+`desktop/` folder of identity + packaging config. Working example: the
+`desktop/` folder in this repo.
 
-Context: Connor HAS a paid Apple Developer account. Notarization is on the
-table; the question was whether the headache is worth it. Answer below: yes.
+## Using the Mac build target
+
+**1. Game main — `<game>/desktop/main.mjs` (this is the whole Electron main):**
+
+```js
+import { createGameShell } from 'bonkjs/desktop';
+
+createGameShell({ width: 1600, height: 900 });
+```
+
+`createGameShell(opts)` serves the vite bundle over a privileged `app://`
+scheme (module scripts are CORS-blocked on `file://` — the silent-white-screen
+gotcha), opens an opaque window with `backgroundThrottling: false` (the
+fixed-step sim + websockets keep running when unfocused — the big desktop win)
+and gestureless audio, and provides a smoke mode. Options: `webDir`, `width`/
+`height`, `backgroundColor`, `preload`, `scheme`, `smokeProbe`, `smokeDelayMs`
+— see `GameShellOptions` in `src/desktop/index.ts`.
+
+**2. Package scaffolding — `<game>/desktop/package.json`:**
+
+```json
+{
+  "private": true,
+  "main": "main.mjs",
+  "scripts": {
+    "web:build": "npm --prefix .. run build && rm -rf dist-web && cp -R ../dist dist-web",
+    "start": "npm run web:build && electron .",
+    "smoke": "npm run web:build && BONK_SMOKE=1 electron .",
+    "dist": "npm run web:build && electron-builder --mac --arm64",
+    "dist:notarized": "npm run web:build && electron-builder --mac --arm64 -c.mac.notarize=true"
+  },
+  "dependencies": { "bonkjs": "^0.6.4" },
+  "devDependencies": { "electron": "^40.0.0", "electron-builder": "^26.0.0" }
+}
+```
+
+`npm run smoke` boots the real game headed for ~8s, prints a JSON probe
+(canvas up? renderer console errors?) to stdout, and exits — verification
+without a human at the window.
+
+**3. Packaging — `<game>/desktop/electron-builder.yml`** (per-game identity;
+see this repo's `desktop/electron-builder.yml` for the full template):
+`appId`, `productName`, `mac.icon: build/icon.png` (a 1024×1024 png —
+electron-builder generates the .icns), arm64 `zip`+`dmg` targets, and ONE of
+the signing modes below. Plus `build/entitlements.mac.plist` — a hardened-
+runtime Electron game needs exactly `com.apple.security.cs.allow-jit` (V8);
+the template stages the two Steam-overlay entitlements as comments.
+
+**4. Signing modes** (all $-amounts = Apple Developer Program membership):
+
+| Mode | Config | Good for |
+|---|---|---|
+| Ad-hoc ($0, no account) | `identity: '-'`, `hardenedRuntime: false` | Steam + itch-app installs (they set no quarantine attr → Gatekeeper never fires); direct downloads hit the "Open Anyway" ritual |
+| Developer ID signed | omit `identity` (auto-discovered from the keychain), `hardenedRuntime: true` + entitlements | prerequisite for notarization + Mac auto-update |
+| + Notarized | `npm run dist:notarized` with `APPLE_API_KEY` / `APPLE_API_KEY_ID` / `APPLE_API_ISSUER` exported (App Store Connect API key — keep in a gitignored env file) | clean zero-dialog direct downloads; requires Xcode's notarytool (accept the Xcode license once) |
+
+Always ship arm64 (or universal): Apple Silicon requires at least an ad-hoc
+signature and Rosetta 2 sunsets with macOS 27.
+
+**Gotcha that will bite anyone porting a game:** the entry module must NOT
+top-level-await the game boot — TLA in the entry chunk deadlocks pixi's
+dynamic `browserAll` import in production vite builds (silent hang, dev server
+unaffected). Boot with `void main()`.
+
+---
+
+# Research & Strategy record (2026-07-11)
+
+Decision record from a four-track research pass (Mac Gatekeeper/signing
+reality, wrapper runtime comparison, GPU headroom outside the browser, the
+notarization pipeline). Goal: derisk shipping bonkjs games as desktop builds —
+Mac first — via Steam and web download, never the App Store.
+
+## Status: shell EXTRACTED to `bonkjs/desktop` (v0.6.4, same day)
+
+The shell logic is a published subpath export — `import { createGameShell }
+from 'bonkjs/desktop'` (src/desktop/index.ts): app:// privileged serving (the
+file:// module-CORS fix), opaque window, backgroundThrottling off, gestureless
+audio, BONK_SMOKE probe mode. A game's main.mjs is ~5 lines of identity —
+every bonk game is a pixi 2D vite bundle, so build targets are an engine
+concern, not per-game scaffolding. electron stays runtime-provided by the
+game (non-literal dynamic import — no dep, no ambient type leak). Per-game
+remains: electron-builder.yml (appId/icon/signing), entitlements, certs.
+Consumers: desktop/ here (demo) + afterlight/desktop.
 
 ## Status: Mac ARM pipeline BUILT + verified (2026-07-11, same day)
 
@@ -43,11 +125,10 @@ extension registry — `resolve.dedupe: ['pixi.js']` in the vite config guards
 it. And `identity: '-'` in electron-builder does exactly what we want:
 ad-hoc-signs, skips notarization.
 
-Still needs a human at the machine: gamepad hot-plug readout, alt-tab
-`hiddenTicks` accumulating (backgroundThrottling proof), the Gatekeeper
-"Open Anyway" walk on a second Mac, and the notarization leg (Developer ID
-cert + ASC API key — Connor has the account; flip the marked block in
-`desktop/electron-builder.yml`).
+Verified by hand since: gamepad + hot-plug work in the packaged shell; the
+worst-tick-gap probe replaced hiddenTicks (backgroundThrottling:false pins
+visibilityState to 'visible', so a hidden-tick counter can never fire — read
+the worst gap after alt-tabbing instead: ~17ms = never throttled).
 
 ## Verdict
 

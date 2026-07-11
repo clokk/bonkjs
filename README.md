@@ -60,6 +60,7 @@ game.start();
 | **Time** | Delta time, elapsed time, time scaling, FPS tracking. |
 | **vec2** | Functional vector math. All operations return new tuples, never mutate. |
 | **Tweaker** | Runtime constant editor — live-tweak numbers, colors, booleans with a hotkey overlay. Saves to localStorage. Zero overhead when hidden. |
+| **bonkjs/desktop** | Mac desktop (Electron) shell — `createGameShell()` serves your vite bundle as a native app: privileged `app://` scheme, no background throttling, gestureless audio, automated smoke mode. Full guide: [docs/DESKTOP.md](docs/DESKTOP.md). |
 
 ## What's Not Included
 

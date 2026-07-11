@@ -26,12 +26,16 @@ export default defineConfig(({ command }) => {
     ...shared,
     build: {
       lib: {
-        entry: path.resolve(__dirname, 'src/index.ts'),
+        entry: {
+          bonkjs: path.resolve(__dirname, 'src/index.ts'),
+          desktop: path.resolve(__dirname, 'src/desktop/index.ts'),
+        },
         formats: ['es'],
-        fileName: 'bonkjs',
+        fileName: (_format, entryName) => `${entryName}.js`,
       },
       rollupOptions: {
-        external: ['pixi.js'],
+        // electron is runtime-provided by the game's Electron install (desktop entry only)
+        external: ['pixi.js', 'electron', /^node:/],
       },
       target: 'ES2022',
       sourcemap: true,
