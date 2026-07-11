@@ -144,6 +144,7 @@ export async function createGameShell(opts: GameShellOptions = {}): Promise<void
 
   const winW = opts.width ?? 1600;
   const winH = opts.height ?? 900;
+  const ratio = opts.aspectRatio ?? winW / winH;
   const win = new BrowserWindow({
     width: winW,
     height: winH,
@@ -151,6 +152,7 @@ export async function createGameShell(opts: GameShellOptions = {}): Promise<void
     // content area's height and a fit-scaled game pillarboxes at launch.
     useContentSize: true,
     backgroundColor: opts.backgroundColor ?? '#000000',
+    show: false, // shown below, after the work-area fit — avoids a visible resize hop
     webPreferences: {
       ...(opts.preload ? { preload: opts.preload } : {}),
       backgroundThrottling: false,
@@ -160,8 +162,27 @@ export async function createGameShell(opts: GameShellOptions = {}): Promise<void
     },
   });
 
+  // Fit the requested CONTENT size into the display's WORK AREA, preserving ratio.
+  // Windows display scaling (125–150% is the OS default on most modern PCs) shrinks
+  // the logical work area — e.g. 1080p at 125% leaves ~864 logical px of height, so
+  // a 1600×900 request doesn't fit; the OS clamps the frame's height off-ratio and
+  // the fit-scaled game gutters at first launch. Measure this window's real frame
+  // overhead (title bar + borders vary per platform/theme), scale the content down
+  // on-ratio, re-center. Full screen / maximize behave as before.
+  if (ratio > 0) {
+    const wa = screen.getPrimaryDisplay().workAreaSize;
+    const [outerW, outerH] = win.getSize();
+    const [cw, ch] = win.getContentSize();
+    const fit = Math.min(1, (wa.width - (outerW - cw)) / winW, (wa.height - (outerH - ch)) / winH);
+    if (fit < 1) {
+      const h = Math.floor(winH * fit);
+      win.setContentSize(Math.round(h * ratio), h);
+      win.center();
+    }
+  }
+  win.show();
+
   // Keep the CONTENT area on-ratio during manual resize (no gutters at any size).
-  const ratio = opts.aspectRatio ?? winW / winH;
   if (ratio > 0) win.setAspectRatio(ratio, { width: 0, height: 0 });
 
   win.webContents.on('console-message', (_e: unknown, level: number, message: string) => {

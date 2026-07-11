@@ -24,7 +24,11 @@ createGameShell({ width: 1600, height: 900 });
 scheme (module scripts are CORS-blocked on `file://` — the silent-white-screen
 gotcha), opens an opaque window with `backgroundThrottling: false` (the
 fixed-step sim + websockets keep running when unfocused — the big desktop win)
-and gestureless audio, and provides a smoke mode. Options: `webDir`, `width`/
+and gestureless audio, and provides a smoke mode. The window sizes its CONTENT
+area (`useContentSize`) and fits it into the display's work area on-ratio at
+launch (0.6.8 — Windows display scaling at 125–150% otherwise leaves too little
+logical height and the OS clamps the frame off-ratio → gutters), then locks the
+aspect ratio during manual resize. Options: `webDir`, `width`/
 `height`, `backgroundColor`, `preload`, `scheme`, `smokeProbe`, `smokeDelayMs`
 — see `GameShellOptions` in `src/desktop/index.ts`.
 
