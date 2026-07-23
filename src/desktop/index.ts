@@ -220,6 +220,14 @@ export async function createGameShell(opts: GameShellOptions = {}): Promise<void
   // Keep the CONTENT area on-ratio during manual resize (no gutters at any size).
   if (ratio > 0) win.setAspectRatio(ratio, { width: 0, height: 0 });
 
+  // External links (window.open / target=_blank — e.g. a game's Discord invite) go to the
+  // SYSTEM browser; the shell never spawns a second Electron window. Non-http(s) schemes
+  // are dropped outright. In-app navigation stays on the app scheme untouched.
+  win.webContents.setWindowOpenHandler(({ url }: { url: string }) => {
+    if (/^https?:\/\//i.test(url)) void electron.shell.openExternal(url);
+    return { action: 'deny' };
+  });
+
   win.webContents.on('console-message', (_e: unknown, level: number, message: string) => {
     if (level >= 3) rendererErrors.push(String(message).slice(0, 200));
     if (smoke) console.log('[renderer]', message);

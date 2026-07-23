@@ -211,6 +211,15 @@ free. On a pre-0.6.9 shell the status fetch just fails — treat that as
 "no update info" and show nothing. (Working example: afterlight's
 `src/desktop-shell.ts` + its menu row.)
 
+### External links (0.6.10)
+
+`window.open` / `target=_blank` from the game (a Discord invite, a store page)
+opens in the **system browser** via `shell.openExternal`; the shell denies the
+new-window request so a second Electron window never spawns. Non-http(s)
+schemes are dropped. On a pre-0.6.10 shell, window.open falls back to
+Electron's default (a bare child window) — harmless but ugly; ship links
+anyway.
+
 ---
 
 # Research & Strategy record (2026-07-11)
