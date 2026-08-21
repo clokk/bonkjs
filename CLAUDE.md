@@ -109,6 +109,7 @@ npm run dev          # Hot-reload dev server (port 3000)
 npm run build        # Library build (ESM bundle + declarations → dist/)
 npm run build:watch  # Library build with file watching (for npm link workflow)
 npm run typecheck    # Type check only
+npm test             # vitest (test/*.test.ts — pure-logic units, e.g. gamepad adoption)
 ```
 
 ## Versioning & Publishing

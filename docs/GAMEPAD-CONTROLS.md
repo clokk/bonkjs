@@ -31,7 +31,7 @@ game.onUpdate(() => {
 
 Each frame, `update()` calls `navigator.getGamepads()`, reads button/axis state, diffs against the previous frame, and calls `Input.setVirtualKey()` for changes. `Input.getKey()`, `getAxis()`, `getButton()`, and `captureKeyState()` all see gamepad input identically to physical keys.
 
-Only gamepads with `mapping === 'standard'` are accepted (Xbox, PlayStation, Switch Pro, and most modern controllers).
+Gamepads with `mapping === 'standard'` are accepted (Xbox, PlayStation, Switch Pro, and most modern controllers). Pads the browser reports with any other mapping are **also** adopted by default when they have the standard shape (≥16 buttons, ≥4 axes) — Chromium's generic fallback already orders those in standard positions, which is what unrecognized built-in handheld controllers (AYN Thor / Odin, Retroid) and some Bluetooth pads present as. Set `acceptNonStandardMapping: false` for strict standard-only adoption.
 
 ## GamepadButtons Constants
 
@@ -65,7 +65,8 @@ Only gamepads with `mapping === 'standard'` are accepted (Xbox, PlayStation, Swi
 | `rightStick` | `GamepadStickConfig \| false` | disabled | Right stick config |
 | `buttons` | `GamepadButtonMapping[]` | `[]` | Button-to-key mappings |
 | `dpad` | `{ up?, down?, left?, right? } \| false` | same as leftStick | D-pad key mappings |
-| `gamepadIndex` | `number` | `0` | Preferred gamepad slot. Acts as a hint: the configured slot wins if present, but any standard-mapped gamepad at any slot is adopted when this slot is empty. Handles bluetooth controllers landing at non-zero slots. |
+| `gamepadIndex` | `number` | `0` | Preferred gamepad slot. Acts as a hint: the configured slot wins if present, but any adoptable gamepad at any slot is adopted when this slot is empty. Handles bluetooth controllers landing at non-zero slots. |
+| `acceptNonStandardMapping` | `boolean` | `true` | Adopt pads reporting a non-`'standard'` mapping when they have the standard button/axis shape (≥16 buttons, ≥4 axes). `false` = strict standard-only (e.g. a flight stick / wheel shares the machine). |
 | `autoSwitchMode` | `boolean` | `true` | Auto-switch `Input.inputMode` on gamepad input |
 
 ### `GamepadStickConfig`
@@ -182,10 +183,10 @@ Deadzone and eightWay settings carry over from the previous config when not spec
 
 ## Connection Detection
 
-Listens for `gamepadconnected`/`gamepaddisconnected` events and checks initial state on construction. Only accepts gamepads with `mapping === 'standard'`.
+Listens for `gamepadconnected`/`gamepaddisconnected` events and checks initial state on construction. Accepts `mapping === 'standard'` pads, plus standard-shaped non-standard pads unless `acceptNonStandardMapping: false`. The connect log line names the mapping when a non-standard pad is read as standard. The predicate is exported as `isAdoptableGamepad(gp, acceptNonStandard)` for diagnostics.
 
 ```typescript
-gamepad.connected  // true if a standard gamepad is connected
+gamepad.connected  // true if an adoptable gamepad is connected
 ```
 
 ### Focus loss & idle controllers

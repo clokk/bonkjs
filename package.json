@@ -1,6 +1,6 @@
 {
   "name": "bonkjs",
-  "version": "0.6.10",
+  "version": "0.6.11",
   "description": "PixiJS game toolkit — game loop, input, camera, vec2, particles, sound, splash, devtools",
   "type": "module",
   "main": "./dist/bonkjs.js",
@@ -25,7 +25,8 @@
     "build": "vite build",
     "build:watch": "vite build --watch",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "peerDependencies": {
     "pixi.js": "^8.6.6"
@@ -34,7 +35,8 @@
     "@types/node": "^22.10.7",
     "typescript": "^5.7.3",
     "vite": "^6.0.7",
-    "vite-plugin-dts": "^4.5.4"
+    "vite-plugin-dts": "^4.5.4",
+    "vitest": "^4.1.11"
   },
   "keywords": [
     "game-toolkit",

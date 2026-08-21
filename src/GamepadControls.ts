@@ -55,6 +55,19 @@ export interface GamepadControlsConfig {
   gamepadIndex?: number;
   /** Auto-switch input mode when gamepad input detected. Default: true */
   autoSwitchMode?: boolean;
+  /**
+   * Adopt gamepads the browser reports with a NON-'standard' mapping, provided
+   * they have the standard button/axis SHAPE (≥16 buttons, ≥4 axes). Default: true.
+   *
+   * Chromium only tags a pad `mapping === 'standard'` when it recognizes the device;
+   * unrecognized pads — built-in controllers on Android handhelds (AYN Thor / Odin,
+   * Retroid), some Bluetooth pads — fall back to the generic mapping and report
+   * `mapping: ''` even though Chromium already lays their buttons/axes out in standard
+   * order. Refusing them leaves the game keyboard-only on exactly the devices most
+   * likely to run it from a browser. Set `false` to restore strict standard-only
+   * adoption (e.g. when flight sticks / wheels with many buttons share the machine).
+   */
+  acceptNonStandardMapping?: boolean;
 }
 
 // ==================== Defaults ====================
@@ -65,11 +78,32 @@ const DEFAULT_STICK_KEYS = {
 
 const DEFAULT_DEADZONE = 0.25;
 const STICK_DIGITAL_THRESHOLD = 0.4;
+/** The standard-mapping shape: buttons 0..15 + two stick axis pairs. */
+const STANDARD_MIN_BUTTONS = 16;
+const STANDARD_MIN_AXES = 4;
+
+/**
+ * Whether a gamepad slot holds a pad GamepadControls can drive. `'standard'` pads
+ * always qualify. With `acceptNonStandard`, a pad reporting any other mapping
+ * qualifies too when it has the standard button/axis shape — Chromium's generic
+ * fallback mapping already orders buttons/axes in standard positions, so reading
+ * it as standard is correct for every controller-shaped device. Pure: safe to
+ * unit-test without a DOM.
+ */
+export function isAdoptableGamepad(
+  gp: Gamepad | null | undefined,
+  acceptNonStandard: boolean,
+): gp is Gamepad {
+  if (!gp || !gp.connected) return false;
+  if (gp.mapping === 'standard') return true;
+  if (!acceptNonStandard) return false;
+  return gp.buttons.length >= STANDARD_MIN_BUTTONS && gp.axes.length >= STANDARD_MIN_AXES;
+}
 
 // ==================== GamepadControls Class ====================
 
 export class GamepadControls {
-  private readonly config: Required<Pick<GamepadControlsConfig, 'gamepadIndex' | 'autoSwitchMode'>>;
+  private readonly config: Required<Pick<GamepadControlsConfig, 'gamepadIndex' | 'autoSwitchMode' | 'acceptNonStandardMapping'>>;
   private leftStickConfig: { keys: NonNullable<GamepadStickConfig['keys']>; deadzone: number; eightWay: boolean } | null;
   private readonly rightStickConfig: { keys: NonNullable<GamepadStickConfig['keys']>; deadzone: number; eightWay: boolean } | null;
   private buttonMappings: GamepadButtonMapping[];
@@ -93,7 +127,7 @@ export class GamepadControls {
   private _enabled = false;
   private _connected = false;
   // Slot we've actually latched onto — may differ from config.gamepadIndex when
-  // the preferred slot is empty but another slot has a standard-mapped controller.
+  // the preferred slot is empty but another slot has an adoptable controller.
   private _currentIndex: number | null = null;
   private destroyed = false;
 
@@ -108,6 +142,7 @@ export class GamepadControls {
     this.config = {
       gamepadIndex: config?.gamepadIndex ?? 0,
       autoSwitchMode: config?.autoSwitchMode ?? true,
+      acceptNonStandardMapping: config?.acceptNonStandardMapping ?? true,
     };
 
     // Left stick
@@ -153,13 +188,13 @@ export class GamepadControls {
     this._rightStickDeadzone = this.rightStickConfig?.deadzone ?? DEFAULT_DEADZONE;
 
     // Connection detection — prefer config.gamepadIndex when it arrives, else
-    // accept any standard-mapped gamepad if we don't already have one latched.
+    // accept any adoptable gamepad if we don't already have one latched.
     this.onGamepadConnected = (e: GamepadEvent) => {
-      if (e.gamepad.mapping !== 'standard') return;
+      if (!this.isAdoptable(e.gamepad)) return;
       if (e.gamepad.index === this.config.gamepadIndex || this._currentIndex === null) {
         this._currentIndex = e.gamepad.index;
         this._connected = true;
-        console.log(`[GamepadControls] connected: ${e.gamepad.id} (slot ${e.gamepad.index})`);
+        console.log(`[GamepadControls] connected: ${this.describe(e.gamepad)}`);
       }
     };
     this.onGamepadDisconnected = (e: GamepadEvent) => {
@@ -171,7 +206,7 @@ export class GamepadControls {
       // Another controller may still be present at a different slot — migrate.
       if (this.adoptAvailableGamepad()) {
         const gp = navigator.getGamepads()[this._currentIndex!];
-        console.log(`[GamepadControls] adopted: ${gp?.id} (slot ${this._currentIndex})`);
+        console.log(`[GamepadControls] adopted: ${gp ? this.describe(gp) : `slot ${this._currentIndex}`}`);
       }
     };
     window.addEventListener('gamepadconnected', this.onGamepadConnected);
@@ -408,7 +443,7 @@ export class GamepadControls {
   private getGamepad(): Gamepad | null {
     if (this._currentIndex === null && !this.adoptAvailableGamepad()) return null;
     const gp = navigator.getGamepads()[this._currentIndex!];
-    if (gp && gp.mapping === 'standard' && gp.connected) return gp;
+    if (this.isAdoptable(gp)) return gp;
     // Latched slot went stale without a disconnect event firing (controller slept
     // or idled out — common while sitting on a pause screen). Release injected keys
     // + reset edge state so we don't leak a stuck virtual key or a stale prevButton
@@ -422,8 +457,19 @@ export class GamepadControls {
     return null;
   }
 
+  /** `isAdoptableGamepad` bound to this instance's `acceptNonStandardMapping`. */
+  private isAdoptable(gp: Gamepad | null | undefined): gp is Gamepad {
+    return isAdoptableGamepad(gp, this.config.acceptNonStandardMapping);
+  }
+
+  /** Log line for a pad — surfaces a non-standard mapping so field reports say why it worked. */
+  private describe(gp: Gamepad): string {
+    const mapping = gp.mapping === 'standard' ? '' : ` · mapping '${gp.mapping}' read as standard`;
+    return `${gp.id} (slot ${gp.index}${mapping})`;
+  }
+
   /**
-   * Find a connected standard-mapped gamepad and latch onto its slot.
+   * Find a connected adoptable gamepad and latch onto its slot.
    * Prefers `config.gamepadIndex` when that slot has a controller; otherwise
    * scans all slots and adopts the first match. Mutates `_currentIndex` and
    * `_connected`. Returns true on adoption, false if no gamepad is available.
@@ -431,14 +477,13 @@ export class GamepadControls {
   private adoptAvailableGamepad(): boolean {
     const gamepads = navigator.getGamepads();
     const preferred = gamepads[this.config.gamepadIndex];
-    if (preferred && preferred.mapping === 'standard' && preferred.connected) {
+    if (this.isAdoptable(preferred)) {
       this._currentIndex = this.config.gamepadIndex;
       this._connected = true;
       return true;
     }
     for (let i = 0; i < gamepads.length; i++) {
-      const gp = gamepads[i];
-      if (gp && gp.mapping === 'standard' && gp.connected) {
+      if (this.isAdoptable(gamepads[i])) {
         this._currentIndex = i;
         this._connected = true;
         return true;
@@ -458,7 +503,7 @@ export class GamepadControls {
   private checkInitialConnection(): void {
     if (this.adoptAvailableGamepad()) {
       const gp = navigator.getGamepads()[this._currentIndex!];
-      console.log(`[GamepadControls] already connected: ${gp?.id} (slot ${this._currentIndex})`);
+      console.log(`[GamepadControls] already connected: ${gp ? this.describe(gp) : `slot ${this._currentIndex}`}`);
     }
   }
 
