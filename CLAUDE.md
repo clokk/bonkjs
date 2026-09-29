@@ -127,10 +127,15 @@ git push origin main --tags
 
 ### After Publishing — Update Game Projects
 
+Current consumers: `~/afterlight`, `~/otherway`. The registry can lag a minute after publish, so bypass the
+local cache:
+
 ```bash
-cd ~/geometry-blast
-npm update bonkjs
+cd ~/afterlight && npm install bonkjs@^X.Y.Z --prefer-online && npm run typecheck
+cd ~/otherway && npm install bonkjs@^X.Y.Z --prefer-online && npm run typecheck
 ```
+
+(geometry-blast is frozen on `^0.4.3` — `^` on a 0.x version never crosses a minor, so `npm update` won't move it.)
 
 ## Dual-Dev Workflow (npm link)
 
