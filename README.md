@@ -33,7 +33,7 @@ const camera = new Camera(world, {
 });
 
 game.onFixedUpdate(() => {
-  // Deterministic gameplay at 60Hz
+  // Deterministic gameplay at 60Hz (or init({ fixedDeltaTime }))
   if (Input.getKey('ArrowRight')) player.x += 5;
 });
 
@@ -80,12 +80,12 @@ Most game engines give you too much. You fight the framework instead of building
 
 bonkjs runs two loops:
 
-- **Fixed update** (60Hz) — Deterministic gameplay. Physics, movement, game logic. Same result regardless of display refresh rate.
+- **Fixed update** (60Hz by default, `init({ fixedDeltaTime })` to change; `Time.alpha` to interpolate) — Deterministic gameplay. Physics, movement, game logic. Same result regardless of display refresh rate.
 - **Variable update** (native Hz) — Visuals, particles, UI. Smooth at 60Hz, 120Hz, 144Hz, whatever.
 
 ```typescript
 game.onFixedUpdate(() => {
-  // Runs at exactly 60Hz with accumulator pattern
+  // Runs at exactly Time.fixedDeltaTime (default 1/60) with accumulator pattern
   // Use for: physics, collision, game state, AI
 });
 

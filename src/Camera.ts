@@ -23,6 +23,10 @@ export interface CameraConfig {
   /** Snap the final container position to whole PHYSICAL pixels (kills sub-pixel shimmer of static geometry
    *  under camera shake). Uses {@link Camera.resolution} as the device-pixel density. Default off. */
   pixelSnap?: boolean;
+  /** Split mode only ({@link Camera.tick} + {@link Camera.apply}): render the camera at
+   *  `lerp(previousTick, currentTick, Time.alpha)` instead of the latest tick. Needed for smooth motion when the
+   *  sim rate is low (e.g. `fixedDeltaTime: 1/20`); costs up to one tick of visual latency. Default off. */
+  interpolate?: boolean;
 }
 
 export class Camera {
@@ -51,6 +55,9 @@ export class Camera {
   private viewportHeight: number;
   private targetFn: (() => Vector2) | null = null;
   private currentPosition: Vector2 = [0, 0];
+  /** Follow position at the previous tick — the `interpolate` lerp start. Equals currentPosition outside split mode. */
+  private previousPosition: Vector2 = [0, 0];
+  private interpolate: boolean;
 
   // Screen shake state
   private shakeIntensity = 0;
@@ -68,6 +75,7 @@ export class Camera {
     if (config.bounds) this.bounds = { ...config.bounds };
     if (config.deadzone) this.deadzone = { ...config.deadzone };
     this.pixelSnap = config.pixelSnap ?? false;
+    this.interpolate = config.interpolate ?? false;
   }
 
   /**
@@ -82,6 +90,7 @@ export class Camera {
     if (shouldSnap) {
       const pos = targetFn();
       this.currentPosition = [pos[0] + this.offset[0], pos[1] + this.offset[1]];
+      this.previousPosition = [...this.currentPosition] as Vector2;
     }
   }
 
@@ -110,12 +119,14 @@ export class Camera {
    */
   update(): void {
     this.computeFollow(Time.deltaTime);
+    this.previousPosition = [...this.currentPosition] as Vector2;   // no inter-tick lerp in combined mode
     this.apply();
   }
 
   /** Sim-rate follow compute (call in fixedUpdate). Advances the smoothed follow position deterministically at
    *  `Time.fixedDeltaTime` and decays shake; does NOT write the container. Pair with {@link Camera.apply}. */
   tick(): void {
+    this.previousPosition = [...this.currentPosition] as Vector2;
     this.computeFollow(Time.fixedDeltaTime);
   }
 
@@ -129,9 +140,10 @@ export class Camera {
       sx += (Math.random() * 2 - 1) * this.shakeIntensity;
       sy += (Math.random() * 2 - 1) * this.shakeIntensity;
     }
+    const [vx, vy] = this.viewPosition();
     this.writeTransform(
-      this.viewportWidth / 2 - this.currentPosition[0] * this.zoom + sx,
-      this.viewportHeight / 2 - this.currentPosition[1] * this.zoom + sy,
+      this.viewportWidth / 2 - vx * this.zoom + sx,
+      this.viewportHeight / 2 - vy * this.zoom + sy,
     );
   }
 
@@ -139,6 +151,7 @@ export class Camera {
   snapTo(x: number, y: number): void {
     this.currentPosition = [x, y];
     if (this.bounds) this.currentPosition = this.clampToBounds(this.currentPosition);
+    this.previousPosition = [...this.currentPosition] as Vector2;   // teleport — don't lerp across it
     this.writeTransform(
       this.viewportWidth / 2 - this.currentPosition[0] * this.zoom,
       this.viewportHeight / 2 - this.currentPosition[1] * this.zoom,
@@ -178,11 +191,31 @@ export class Camera {
     return [...this.currentPosition] as Vector2;
   }
 
-  /** Convert screen/canvas coordinates to world coordinates. */
+  /** Convert screen/canvas coordinates to world coordinates (ignores shake — stable for aiming). */
   screenToWorld(screenX: number, screenY: number): Vector2 {
+    const [vx, vy] = this.viewPosition();
     return [
-      (screenX - this.viewportWidth / 2) / this.zoom + this.currentPosition[0],
-      (screenY - this.viewportHeight / 2) / this.zoom + this.currentPosition[1],
+      (screenX - this.viewportWidth / 2) / this.zoom + vx,
+      (screenY - this.viewportHeight / 2) / this.zoom + vy,
+    ];
+  }
+
+  /** Convert world coordinates to screen coordinates in the same logical/design space as the `ui` container —
+   *  e.g. to pin a health bar or name tag (a `ui` child) over an entity. Reads the container transform as last
+   *  written, so it matches what's drawn INCLUDING shake and pixel snap; call it after {@link Camera.apply} /
+   *  {@link Camera.update} in the frame (e.g. in onLateUpdate, after the camera). */
+  worldToScreen(worldX: number, worldY: number): Vector2 {
+    const { position, scale } = this.container;
+    return [position.x + worldX * scale.x, position.y + worldY * scale.y];
+  }
+
+  /** Where the camera renders this frame: the latest follow position, or the inter-tick lerp when `interpolate`. */
+  private viewPosition(): Vector2 {
+    if (!this.interpolate) return this.currentPosition;
+    const a = Time.alpha;
+    return [
+      this.previousPosition[0] + (this.currentPosition[0] - this.previousPosition[0]) * a,
+      this.previousPosition[1] + (this.currentPosition[1] - this.previousPosition[1]) * a,
     ];
   }
 

@@ -29,6 +29,7 @@ The first argument is the PixiJS Container the camera controls (typically the `w
 | `deadzone` | `object` | - | Area target can move without camera moving |
 | `pixelSnap` | `boolean` | `false` | Snap the final container position to whole physical pixels (kills shimmer under shake) |
 | `resolution` | `number` | `1` | Device-pixel density for `pixelSnap` (feed the renderer resolution; see below) |
+| `interpolate` | `boolean` | `false` | Split mode: render between the last two ticks by `Time.alpha` (low sim rates; see below) |
 
 ## Following a Target
 
@@ -62,7 +63,7 @@ simple games, but it means the smoothing speed is coupled to the render frame. F
 
 ```typescript
 game.onFixedUpdate(() => {
-  camera.tick();              // smooth at the fixed 60Hz sim rate (Time.fixedDeltaTime) — deterministic
+  camera.tick();              // smooth at the fixed sim rate (Time.fixedDeltaTime) — deterministic
 });
 game.onUpdate(() => {
   camera.apply(shakeX, shakeY);  // write the container at native refresh; optional screen-space shake offset
@@ -77,6 +78,13 @@ game.onUpdate(() => {
 
 To reproduce a fixed-factor lerp (`pos += (target - pos) * k` per sim tick), set `followSmoothing = k * 60`.
 
+### Low sim rates: `interpolate`
+
+`tick()` moves the camera once per fixed tick. At 60Hz that's fine; at a low sim rate (`fixedDeltaTime: 1/20`)
+the camera visibly steps every 50ms. Set `interpolate: true` so `apply()` renders
+`lerp(previousTick, currentTick, Time.alpha)`, and `screenToWorld` uses that same position. `snapTo()` and the first
+`follow()` reset the lerp so it doesn't cross a teleport. Off by default because it adds up to one tick of latency.
+
 ### Pixel snap
 
 Set `pixelSnap: true` to round the final container position to whole **physical** pixels — this stops thin
@@ -89,6 +97,25 @@ const camera = new Camera(world, { viewport: { width: 1920, height: 1080 }, pixe
 camera.resolution = app.renderer.resolution;
 game.onResize(({ resolution }) => { camera.resolution = resolution; });
 ```
+
+## World → Screen (UI overlays)
+
+`camera.worldToScreen(x, y)` returns the point in the `ui` container's space (logical/design units). Use it to
+pin health bars or name tags that live in `ui` (constant size under zoom, drawn above the world):
+
+```typescript
+game.onLateUpdate(() => {
+  camera.update();                                   // or camera.apply() in split mode
+  const [sx, sy] = camera.worldToScreen(enemy.x, enemy.y - 40);
+  healthBar.position.set(sx, sy);
+});
+```
+
+It reads the transform `apply()`/`update()` last wrote to the container, so it includes shake and pixel snap.
+Overlays stay attached to the entity while the screen shakes. Call it **after** the camera writes this frame.
+(`screenToWorld` is the opposite: it ignores shake so that aiming stays steady.)
+
+If the bar should scale with zoom anyway, skip this and make it a child of `world` instead.
 
 ## Zoom
 

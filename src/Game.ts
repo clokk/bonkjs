@@ -17,6 +17,9 @@ export interface GameInitConfig {
   antialias?: boolean;
   resolution?: number;
   preference?: 'webgl' | 'webgpu';
+  /** Fixed simulation timestep in seconds (default `1 / 60`). E.g. `1 / 20` for a 20Hz sim — pair it with
+   *  {@link Time.alpha} to interpolate rendering between ticks. Sets {@link Time.fixedDeltaTime}. */
+  fixedDeltaTime?: number;
   /**
    * How the canvas maps the design size (`width`×`height`) onto the display.
    * - `'fixed'` (default): the canvas is created once at the design size × `resolution` and never
@@ -91,6 +94,7 @@ export class Game {
     const width = config?.width ?? 800;
     const height = config?.height ?? 600;
     this.scaleMode = config?.scaleMode ?? 'fixed';
+    if (config?.fixedDeltaTime !== undefined) Time.fixedDeltaTime = config.fixedDeltaTime;
     const fit = this.scaleMode === 'fit';
 
     const app = new Application();
@@ -137,7 +141,7 @@ export class Game {
     return { canvas, app, world, ui };
   }
 
-  /** Register a callback for fixed-timestep updates (1/60s). */
+  /** Register a callback for fixed-timestep updates (every {@link Time.fixedDeltaTime}, default 1/60s). */
   onFixedUpdate(cb: UpdateCallback): () => void {
     this.fixedUpdateCallbacks.push(cb);
     return () => {
@@ -285,6 +289,45 @@ export class Game {
     this.ui = null;
   }
 
+  /** Advance the game by `dt` seconds of real time: one full frame of the loop — fixed ticks (as many as the
+   *  accumulator allows), manual {@link Game.step}s, `onUpdate`, `onLateUpdate`, then per-frame input clear.
+   *  Rendering is NOT part of this (Pixi's own ticker renders).
+   *
+   *  `start()` calls this from requestAnimationFrame with a clamped dt (max 0.25s). Call it yourself to drive
+   *  the loop from your own clock — headless tests, replays, a host engine's loop — WITHOUT calling `start()`.
+   *  `dt` is not clamped here; it ignores {@link Game.pause} (pause just stops the rAF loop from calling it). */
+  tick(dt: number): void {
+    Time.update(dt);
+
+    // Fixed timestep loop — accumulate SCALED time (Time.deltaTime = clamped dt × Time.timeScale), so
+    // `Time.timeScale = 0` freezes the simulation and 0.5 = slow-mo. The variable update below still runs
+    // every frame, so render + input keep going even while the sim is frozen.
+    this.fixedAccumulator += Time.deltaTime;
+    while (this.fixedAccumulator >= Time.fixedDeltaTime) {
+      this.fixedAccumulator -= Time.fixedDeltaTime;
+      for (const cb of this.fixedUpdateCallbacks) cb();
+    }
+
+    // Manual frame-steps — advance fixed ticks on demand regardless of timeScale (frame-by-frame stepping
+    // while frozen; see step()).
+    while (this.pendingSteps > 0) {
+      this.pendingSteps--;
+      for (const cb of this.fixedUpdateCallbacks) cb();
+    }
+
+    // How far between the last fixed tick and the next this frame renders — for interpolating sim state.
+    Time.alpha = this.fixedAccumulator / Time.fixedDeltaTime;
+
+    // Variable timestep update — ALWAYS runs (render/input live even when the sim is frozen or slowed).
+    for (const cb of this.updateCallbacks) cb();
+
+    // Late update
+    for (const cb of this.lateUpdateCallbacks) cb();
+
+    // Clear per-frame input state
+    Input.update();
+  }
+
   private loop = (): void => {
     if (!this.running) return;
 
@@ -295,34 +338,7 @@ export class Game {
     // Clamp to prevent spiral of death
     if (dt > this.maxDeltaTime) dt = this.maxDeltaTime;
 
-    if (!this.paused) {
-      Time.update(dt);
-
-      // Fixed timestep loop — accumulate SCALED time (Time.deltaTime = clamped dt × Time.timeScale), so
-      // `Time.timeScale = 0` freezes the simulation and 0.5 = slow-mo. The variable update below still runs
-      // every frame, so render + input keep going even while the sim is frozen.
-      this.fixedAccumulator += Time.deltaTime;
-      while (this.fixedAccumulator >= Time.fixedDeltaTime) {
-        this.fixedAccumulator -= Time.fixedDeltaTime;
-        for (const cb of this.fixedUpdateCallbacks) cb();
-      }
-
-      // Manual frame-steps — advance fixed ticks on demand regardless of timeScale (frame-by-frame stepping
-      // while frozen; see step()).
-      while (this.pendingSteps > 0) {
-        this.pendingSteps--;
-        for (const cb of this.fixedUpdateCallbacks) cb();
-      }
-
-      // Variable timestep update — ALWAYS runs (render/input live even when the sim is frozen or slowed).
-      for (const cb of this.updateCallbacks) cb();
-
-      // Late update
-      for (const cb of this.lateUpdateCallbacks) cb();
-
-      // Clear per-frame input state
-      Input.update();
-    }
+    if (!this.paused) this.tick(dt);
 
     this.animFrameId = requestAnimationFrame(this.loop);
   };

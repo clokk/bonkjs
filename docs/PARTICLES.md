@@ -23,6 +23,20 @@ game.onUpdate(() => particles.render());        // redraw at native refresh
 particles.emit({ x: 400, y: 300, vx: 2, vy: -1, color: 0xffcc44, size: 5, life: 24, maxLife: 24 });
 ```
 
+> **Units are per `update()` call, tuned for 60Hz.** `vx`/`vy`/`grow` are px per tick, `life` is ticks. On a
+> non-default sim rate (`fixedDeltaTime: 1/20`), calling `update()` in `onFixedUpdate` runs particles 3× slow and 3×
+> long-lived, and they step at 20Hz with no interpolation. Particles are cosmetic, so drive them from `onUpdate`
+> at their own 60Hz cadence instead:
+>
+> ```typescript
+> let pAcc = 0;
+> game.onUpdate(() => {
+>   pAcc += Time.deltaTime;
+>   while (pAcc >= 1 / 60) { pAcc -= 1 / 60; particles.update(); }
+>   particles.render();
+> });
+> ```
+
 ## Emit options (`Partial<Particle>`)
 
 | Field | Default | Notes |

@@ -16,8 +16,25 @@ export class Time {
   /** Unscaled total elapsed time */
   static unscaledTime: number = 0;
 
-  /** Fixed timestep for physics (1/60 second) */
-  static readonly fixedDeltaTime: number = 1 / 60;
+  private static _fixedDeltaTime: number = 1 / 60;
+
+  /** Fixed simulation timestep in seconds (default 1/60). Set via `game.init({ fixedDeltaTime })` or directly —
+   *  e.g. `1 / 20` for a 20Hz sim. Must be > 0. NOT touched by {@link Time.reset}. */
+  static get fixedDeltaTime(): number {
+    return this._fixedDeltaTime;
+  }
+  static set fixedDeltaTime(value: number) {
+    if (!(value > 0) || !Number.isFinite(value)) {
+      throw new Error(`Time.fixedDeltaTime must be a positive finite number (got ${value})`);
+    }
+    this._fixedDeltaTime = value;
+  }
+
+  /** Interpolation alpha in [0, 1): how far the current render frame sits between the last fixed tick and the
+   *  next (`leftover accumulator / fixedDeltaTime`). Render a sim-driven value as `lerp(prev, curr, Time.alpha)`
+   *  to get smooth motion from a low-rate sim (e.g. 20Hz) on a high-refresh display. Updated by the game loop
+   *  before `onUpdate` runs. */
+  static alpha: number = 0;
 
   /** Time scale for slow-mo or pause effects */
   static timeScale: number = 1;
@@ -56,6 +73,7 @@ export class Time {
     this.time = 0;
     this.unscaledTime = 0;
     this.timeScale = 1;
+    this.alpha = 0;
     this.frameCount = 0;
     this.fps = 60;
     this.fpsAccumulator = 0;

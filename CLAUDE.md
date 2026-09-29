@@ -57,7 +57,7 @@ const camera = new Camera(world, {
   followSmoothing: 5,
 });
 
-game.onFixedUpdate(() => { /* deterministic gameplay at 1/60s */ });
+game.onFixedUpdate(() => { /* deterministic gameplay at Time.fixedDeltaTime (default 1/60s) */ });
 game.onUpdate(() => { /* visuals at native refresh rate */ });
 game.onLateUpdate(() => { camera.update(); });
 
@@ -70,7 +70,8 @@ Games access raw PixiJS objects (Application, Container, Renderer) directly. No 
 
 ### Game Loop (Game.ts)
 - Creates PixiJS Application, returns `{ canvas, app, world, ui }`
-- Fixed timestep (60Hz) with accumulator pattern for deterministic gameplay
+- Fixed timestep (60Hz default, `init({ fixedDeltaTime })`) with accumulator pattern; `Time.alpha` for render interpolation
+- Public `game.tick(dt)` to drive one loop frame from your own clock
 - Variable timestep rendering at native refresh rate
 - Max delta time clamp (0.25s) to prevent spiral of death
 - `onFixedUpdate()`, `onUpdate()`, `onLateUpdate()` callbacks

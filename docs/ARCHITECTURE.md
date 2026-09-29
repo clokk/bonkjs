@@ -43,14 +43,15 @@ The `Game` class creates a PixiJS Application and runs a dual-timestep loop:
 
 ```
 ┌─────────────────────────────────────────┐
-│  requestAnimationFrame                   │
+│  requestAnimationFrame → game.tick(dt)   │
 │                                          │
 │  1. Time.update(dt)                      │
 │                                          │
 │  2. Fixed timestep (accumulator)         │
-│     while (acc >= 1/60):                 │
+│     while (acc >= fixedDeltaTime):       │
 │       onFixedUpdate callbacks            │
-│       acc -= 1/60                        │
+│       acc -= fixedDeltaTime              │
+│     Time.alpha = acc / fixedDeltaTime    │
 │                                          │
 │  3. onUpdate callbacks                   │
 │                                          │
@@ -62,10 +63,33 @@ The `Game` class creates a PixiJS Application and runs a dual-timestep loop:
 └─────────────────────────────────────────┘
 ```
 
-- **Fixed update** (60Hz) — Deterministic gameplay. Same result regardless of display refresh rate. Use for physics, game state, AI.
+- **Fixed update** (60Hz default; `init({ fixedDeltaTime })` to change) — Deterministic gameplay. Same result regardless of display refresh rate. Use for physics, game state, AI.
 - **Variable update** (native Hz) — Visuals at whatever the display supports. Use for rendering, particles, UI, interpolation.
 - **Late update** — Runs after variable update. Use for camera follow (needs final positions).
 - **PixiJS rendering** — Handled automatically by PixiJS Application's internal ticker. No manual `render()` call needed.
+
+#### Sim rate & interpolation (v0.6.12+)
+
+The fixed step defaults to `1/60`. For a lower-rate sim (e.g. a 20Hz networked/lockstep game), set it at init:
+
+```typescript
+await game.init({ width: 1920, height: 1080, fixedDeltaTime: 1 / 20 });
+```
+
+A 20Hz sim rendered as-is moves in visible 50ms steps. Keep the previous and current sim state and render the
+blend using **`Time.alpha`**: the leftover accumulator ÷ `fixedDeltaTime`, in [0, 1), set just before `onUpdate`:
+
+```typescript
+game.onFixedUpdate(() => { e.prevX = e.x; e.x += e.vx * Time.fixedDeltaTime; });
+game.onUpdate(() => { e.sprite.x = e.prevX + (e.x - e.prevX) * Time.alpha; });
+```
+
+This costs up to one tick of visual latency. The camera's split mode has the same problem and the same fix:
+`new Camera(world, { ..., interpolate: true })` (see CAMERA.md).
+
+**`game.tick(dt)`** runs one full loop frame (fixed ticks, steps, `onUpdate`, `onLateUpdate`, input clear) for
+`dt` seconds. `start()` calls it from rAF with dt clamped to 0.25s. Call it yourself, without `start()`, to drive
+bonkjs from your own clock (headless tests, replays, a host loop). It doesn't clamp dt and ignores `pause()`.
 
 #### Time scale, freeze & frame-step
 
@@ -73,7 +97,7 @@ The fixed accumulator advances by `Time.deltaTime` (= clamped frame dt × **`Tim
 
 - **`Time.timeScale = 1`** — normal.
 - **`Time.timeScale = 0.25`** — slow-mo (the fixed sim runs at quarter speed; great for inspecting fast movement / VFX).
-- **`Time.timeScale = 0`** — **freeze**: the accumulator never crosses `1/60`, so `onFixedUpdate` stops firing and the sim holds still — but `onUpdate` / `onLateUpdate` keep running every frame, so the frozen frame still renders and input/dev tools stay live (ideal for inspecting or screenshotting a transient state). This is distinct from **`pause()`**, which halts the *entire* loop (render included).
+- **`Time.timeScale = 0`** — **freeze**: the accumulator never crosses `Time.fixedDeltaTime`, so `onFixedUpdate` stops firing and the sim holds still — but `onUpdate` / `onLateUpdate` keep running every frame, so the frozen frame still renders and input/dev tools stay live (ideal for inspecting or screenshotting a transient state). This is distinct from **`pause()`**, which halts the *entire* loop (render included).
 - **`game.step(n = 1)`** — advance exactly `n` fixed ticks on the next frame, regardless of `timeScale`. Pair with `Time.timeScale = 0` for **frame-by-frame** debugging (freeze, then step one tick at a time and watch each frame render).
 
 ### Initialization
