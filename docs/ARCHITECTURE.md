@@ -88,8 +88,20 @@ This costs up to one tick of visual latency. The camera's split mode has the sam
 `new Camera(world, { ..., interpolate: true })` (see CAMERA.md).
 
 **`game.tick(dt)`** runs one full loop frame (fixed ticks, steps, `onUpdate`, `onLateUpdate`, input clear) for
-`dt` seconds. `start()` calls it from rAF with dt clamped to 0.25s. Call it yourself, without `start()`, to drive
+`dt` seconds. `start()` calls it from rAF with dt clamped to `maxDeltaTime`. Call it yourself, without `start()`, to drive
 bonkjs from your own clock (headless tests, replays, a host loop). It doesn't clamp dt and ignores `pause()`.
+
+#### Frame clamp & errors (v0.6.13+)
+
+- **`maxDeltaTime`** (default `0.25`s): `init({ maxDeltaTime })` or `game.maxDeltaTime = …`. The `start()` loop
+  clamps each frame's dt to it, which caps catch-up at `maxDeltaTime / fixedDeltaTime` fixed ticks per frame
+  (15 at the defaults). Time clamped off is simply lost, so the sim falls behind the wall clock by that much.
+  Raise it when staying on the clock matters more than bounding a slow frame, e.g. `1` with a 20Hz sim (≤ 20
+  catch-up ticks). At 60Hz, `1` allows 60 ticks in one frame — only safe if a tick is cheap.
+- **A throwing callback no longer kills the loop.** `start()` requests the next frame before ticking, so the
+  error surfaces as an uncaught error for that frame and the loop carries on. The rest of that frame's
+  callbacks are skipped; per-frame input state is still cleared. A callback that throws *every* frame now
+  logs every frame instead of freezing the game — watch the console.
 
 #### Time scale, freeze & frame-step
 

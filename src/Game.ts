@@ -20,6 +20,9 @@ export interface GameInitConfig {
   /** Fixed simulation timestep in seconds (default `1 / 60`). E.g. `1 / 20` for a 20Hz sim — pair it with
    *  {@link Time.alpha} to interpolate rendering between ticks. Sets {@link Time.fixedDeltaTime}. */
   fixedDeltaTime?: number;
+  /** Largest frame dt (seconds) the `start()` loop will feed into a frame — longer gaps (a hitch, a tab coming
+   *  back from the background) are clamped to this. Default `0.25`. Sets {@link Game.maxDeltaTime}. */
+  maxDeltaTime?: number;
   /**
    * How the canvas maps the design size (`width`×`height`) onto the display.
    * - `'fixed'` (default): the canvas is created once at the design size × `resolution` and never
@@ -87,7 +90,7 @@ export class Game {
   private lastTime = 0;
   private fixedAccumulator = 0;
   private pendingSteps = 0;
-  private readonly maxDeltaTime = 0.25;
+  private _maxDeltaTime = 0.25;
 
   /** Initialize PixiJS and input. Returns canvas + raw containers. */
   async init(config?: GameInitConfig): Promise<GameInitResult> {
@@ -95,6 +98,7 @@ export class Game {
     const height = config?.height ?? 600;
     this.scaleMode = config?.scaleMode ?? 'fixed';
     if (config?.fixedDeltaTime !== undefined) Time.fixedDeltaTime = config.fixedDeltaTime;
+    if (config?.maxDeltaTime !== undefined) this.maxDeltaTime = config.maxDeltaTime;
     const fit = this.scaleMode === 'fit';
 
     const app = new Application();
@@ -139,6 +143,19 @@ export class Game {
     this.ui = ui;
 
     return { canvas, app, world, ui };
+  }
+
+  /** Largest frame dt (seconds) the `start()` loop passes to {@link Game.tick}; longer real-time gaps are
+   *  clamped to it (default 0.25). The clamp bounds how many fixed ticks one frame can run
+   *  (`maxDeltaTime / Time.fixedDeltaTime` — 15 at the defaults), which is what stops a slow frame from
+   *  snowballing; the cost is that the sim falls behind wall-clock time by whatever was clamped off. Raise it
+   *  when staying on the clock matters more (e.g. `1` for a 20Hz sim = at most 20 catch-up ticks). Must be > 0. */
+  get maxDeltaTime(): number {
+    return this._maxDeltaTime;
+  }
+  set maxDeltaTime(value: number) {
+    if (!(value > 0)) throw new Error(`Game.maxDeltaTime must be a positive number (got ${value})`);
+    this._maxDeltaTime = value;
   }
 
   /** Register a callback for fixed-timestep updates (every {@link Time.fixedDeltaTime}, default 1/60s). */
@@ -233,7 +250,8 @@ export class Game {
     this.fitTeardown.push(() => dprMql?.removeEventListener('change', onDprChange));
   }
 
-  /** Start the game loop. */
+  /** Start the game loop. The first frame runs synchronously, so an error thrown by a callback on that frame
+   *  propagates out of `start()` — the loop is already scheduled and keeps running regardless. */
   start(): void {
     if (this.running) return;
     this.running = true;
@@ -293,10 +311,24 @@ export class Game {
    *  accumulator allows), manual {@link Game.step}s, `onUpdate`, `onLateUpdate`, then per-frame input clear.
    *  Rendering is NOT part of this (Pixi's own ticker renders).
    *
-   *  `start()` calls this from requestAnimationFrame with a clamped dt (max 0.25s). Call it yourself to drive
-   *  the loop from your own clock — headless tests, replays, a host engine's loop — WITHOUT calling `start()`.
-   *  `dt` is not clamped here; it ignores {@link Game.pause} (pause just stops the rAF loop from calling it). */
+   *  `start()` calls this from requestAnimationFrame with dt clamped to {@link Game.maxDeltaTime}. Call it
+   *  yourself to drive the loop from your own clock — headless tests, replays, a host engine's loop — WITHOUT
+   *  calling `start()`. `dt` is not clamped here; it ignores {@link Game.pause} (pause just stops the rAF loop
+   *  from calling it).
+   *
+   *  If a callback throws, the rest of that frame's callbacks are skipped and the error propagates to the
+   *  caller, but per-frame input state is still cleared — so a "pressed this frame" flag can't stay latched
+   *  across frames while something keeps throwing. */
   tick(dt: number): void {
+    try {
+      this.runFrame(dt);
+    } finally {
+      // Clear per-frame input state
+      Input.update();
+    }
+  }
+
+  private runFrame(dt: number): void {
     Time.update(dt);
 
     // Fixed timestep loop — accumulate SCALED time (Time.deltaTime = clamped dt × Time.timeScale), so
@@ -323,9 +355,6 @@ export class Game {
 
     // Late update
     for (const cb of this.lateUpdateCallbacks) cb();
-
-    // Clear per-frame input state
-    Input.update();
   }
 
   private loop = (): void => {
@@ -336,10 +365,13 @@ export class Game {
     this.lastTime = now;
 
     // Clamp to prevent spiral of death
-    if (dt > this.maxDeltaTime) dt = this.maxDeltaTime;
+    if (dt > this._maxDeltaTime) dt = this._maxDeltaTime;
+
+    // Request the next frame BEFORE ticking: a callback that throws surfaces as an uncaught error for this
+    // frame only, instead of silently ending the loop for good. (It also means stop()/destroy() called from
+    // inside a callback cancel the frame that's actually pending.)
+    this.animFrameId = requestAnimationFrame(this.loop);
 
     if (!this.paused) this.tick(dt);
-
-    this.animFrameId = requestAnimationFrame(this.loop);
   };
 }

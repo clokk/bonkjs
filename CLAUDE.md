@@ -73,7 +73,8 @@ Games access raw PixiJS objects (Application, Container, Renderer) directly. No 
 - Fixed timestep (60Hz default, `init({ fixedDeltaTime })`) with accumulator pattern; `Time.alpha` for render interpolation
 - Public `game.tick(dt)` to drive one loop frame from your own clock
 - Variable timestep rendering at native refresh rate
-- Max delta time clamp (0.25s) to prevent spiral of death
+- Max delta time clamp (`maxDeltaTime`, default 0.25s, configurable) to prevent spiral of death
+- Next frame is requested before ticking — a throwing callback loses that frame, not the loop
 - `onFixedUpdate()`, `onUpdate()`, `onLateUpdate()` callbacks
 
 ### Camera (Camera.ts)
