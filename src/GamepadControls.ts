@@ -386,28 +386,43 @@ export class GamepadControls {
   private pollButtons(buttons: readonly GamepadButton[]): boolean {
     let hadInput = false;
 
+    // Edge state is per BUTTON, but one button may map to several keys. Snapshot
+    // every button's previous state before any mapping updates it, so all of a
+    // button's mappings see the same press/release edge this poll.
+    const prevStates = new Map(this.prevButtonStates);
+    // Keys some currently-pressed button maps to — a key held by two buttons
+    // stays down until both are released.
+    const heldKeys = new Set<string>();
+
     for (const mapping of this.buttonMappings) {
       const btn = buttons[mapping.button];
       if (!btn) continue;
 
-      const wasPressed = this.prevButtonStates.get(mapping.button) ?? false;
+      const wasPressed = prevStates.get(mapping.button) ?? false;
       const isPressed = btn.pressed;
       this.prevButtonStates.set(mapping.button, isPressed);
 
-      if (isPressed && !wasPressed) {
-        // Button just pressed
-        this.activeButtonKeys.add(mapping.key);
-        Input.setVirtualKey(mapping.key, true);
-        hadInput = true;
-      } else if (!isPressed && wasPressed) {
-        // Button just released
-        this.activeButtonKeys.delete(mapping.key);
-        if (this.shouldReleaseKey(mapping.key, 'button')) {
-          Input.setVirtualKey(mapping.key, false);
+      if (isPressed) {
+        heldKeys.add(mapping.key);
+        if (!wasPressed) {
+          // Button just pressed
+          this.activeButtonKeys.add(mapping.key);
+          Input.setVirtualKey(mapping.key, true);
         }
         hadInput = true;
-      } else if (isPressed) {
+      } else if (wasPressed) {
+        // Button just released — key is released below once nothing holds it
         hadInput = true;
+      }
+    }
+
+    // Release keys no pressed button holds any more
+    for (const key of this.activeButtonKeys) {
+      if (!heldKeys.has(key)) {
+        this.activeButtonKeys.delete(key);
+        if (this.shouldReleaseKey(key, 'button')) {
+          Input.setVirtualKey(key, false);
+        }
       }
     }
 
